@@ -17,10 +17,17 @@ namespace Righthand.ViceMonitor.Bridge
 
     public readonly struct ManagedBuffer: IDisposable
     {
+        public static readonly ManagedBuffer Empy = new ManagedBuffer(0);
         public byte[] Data { get; }
-        readonly ArrayPool<byte> pool;
+        readonly ArrayPool<byte>? pool;
         public uint Size { get; }
-        public ManagedBuffer(ArrayPool<byte> pool, byte[] data, uint size)
+        ManagedBuffer(uint size)
+        {
+            pool = null;
+            Data = new byte[0];
+            Size = 0;
+        }
+        internal ManagedBuffer(ArrayPool<byte> pool, byte[] data, uint size)
         {
             this.pool = pool;
             Data = data;
@@ -29,7 +36,7 @@ namespace Righthand.ViceMonitor.Bridge
 
         public void Dispose()
         {
-            pool.Return(Data);
+            pool?.Return(Data);
         }
     }
 }

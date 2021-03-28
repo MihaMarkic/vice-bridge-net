@@ -1,5 +1,9 @@
 ﻿using System;
+using System.Collections.Immutable;
+using System.Globalization;
+using System.Text;
 using Microsoft.Extensions.Logging;
+using static Righthand.ViceMonitor.Bridge.Commands.RegistersResponse;
 
 namespace Righthand.ViceMonitor.Bridge.Commands
 {
@@ -30,18 +34,49 @@ namespace Righthand.ViceMonitor.Bridge.Commands
             logger.LogDebug($"Decoding {responseType}({(byte)responseType:x2}) with error code {errorCode} and request id {requestId:x4}");
             ViceResponse result = responseType switch
             {
-                ResponseType.CheckpointSet => BuildCheckpointSetResponse(apiVersion, errorCode, buffer),
+                ResponseType.MemoryGet          => BuildMemoryGetResponse(apiVersion, errorCode, buffer),
+                ResponseType.MemorySet          => BuildEmptyResponse(apiVersion, errorCode),
+                ResponseType.Checkpoint         => BuildCheckpointResponse(apiVersion, errorCode, buffer),
+                ResponseType.Registers          => BuildRegistersResponse(apiVersion, errorCode, buffer),
+                ResponseType.Dump               => BuildEmptyResponse(apiVersion, errorCode),
+                ResponseType.Undump             => BuildUndumpResponse(apiVersion, errorCode, buffer),
+                ResponseType.ResourceGet        => BuildResourceGetResponse(apiVersion, errorCode, buffer),
+                ResponseType.ResourceSet        => BuildEmptyResponse(apiVersion, errorCode),
+                ResponseType.Jam                => BuildJamResponse(apiVersion, errorCode, buffer),
+                ResponseType.Stopped            => BuildStoppedResponse(apiVersion, errorCode, buffer),
+                ResponseType.Resumed            => BuildResumedResponse(apiVersion, errorCode, buffer),
+                ResponseType.AdvanceInstruction => BuildEmptyResponse(apiVersion, errorCode),
+                ResponseType.KeyboardFeed       => BuildEmptyResponse(apiVersion, errorCode),
+                ResponseType.ExecuteUntilReturn => BuildEmptyResponse(apiVersion, errorCode),
+                ResponseType.Ping               => BuildEmptyResponse(apiVersion, errorCode),
+                ResponseType.BanksAvailable     => BuildBanksAvailableResponse(apiVersion, errorCode, buffer),
+                ResponseType.RegistersAvailable  => BuildRegistersAvailableResponse(apiVersion, errorCode, buffer),
                 //_ => throw new Exception($"Unknown response type {responseType}"),
-                _ => new TempViceResponse(apiVersion, errorCode),
+                _ => new EmptyViceResponse(apiVersion, errorCode),
             };
             return (result, requestId);
         }
 
-        internal CheckpointSetResponse BuildCheckpointSetResponse(byte apiVersion, ErrorCode errorCode, ReadOnlySpan<byte> buffer)
+        internal MemoryGetResponse BuildMemoryGetResponse(byte apiVersion, ErrorCode errorCode, ReadOnlySpan<byte> buffer)
+        {
+            ManagedBuffer segmentBuffer;
+            if (errorCode == ErrorCode.OK)
+            {
+                ushort memorySegmentLength = BitConverter.ToUInt16(buffer);
+                segmentBuffer = BufferManager.GetBuffer(memorySegmentLength);
+                buffer.Slice(2, memorySegmentLength).CopyTo(segmentBuffer.Data);
+            }
+            else
+            {
+                segmentBuffer = ManagedBuffer.Empy;
+            }
+            return new MemoryGetResponse(apiVersion, errorCode, segmentBuffer);
+        }
+        internal CheckpointResponse BuildCheckpointResponse(byte apiVersion, ErrorCode errorCode, ReadOnlySpan<byte> buffer)
         {
             if (errorCode == ErrorCode.OK)
             {
-                return new CheckpointSetResponse(apiVersion, errorCode,
+                return new CheckpointResponse(apiVersion, errorCode,
                     CheckpointNumber: BitConverter.ToUInt32(buffer),
                     CurrentlyHit: BitConverter.ToBoolean(buffer[4..]),
                     StartAddress: BitConverter.ToUInt16(buffer[5..]),
@@ -56,9 +91,169 @@ namespace Righthand.ViceMonitor.Bridge.Commands
             }
             else
             {
-                return new CheckpointSetResponse(apiVersion, errorCode, default, default, default, default,
+                return new CheckpointResponse(apiVersion, errorCode, default, default, default, default,
                     default, default, default, default, default, default, default);
             }
         }
+        internal RegistersResponse BuildRegistersResponse(byte apiVersion, ErrorCode errorCode, ReadOnlySpan<byte> buffer)
+        {
+            var items = ImmutableArray<RegisterItem>.Empty;
+            if (errorCode == ErrorCode.OK)
+            {
+                ushort itemsCount = BitConverter.ToUInt16(buffer);
+                for (ushort i = 0; i < itemsCount; i++)
+                {
+                    var itemBuffer = buffer.Slice((int)(2 + i * RegisterItem.ContentLength));
+                    System.Diagnostics.Debug.Assert(itemBuffer[0] == 3);
+                    var item = new RegisterItem(
+                        //Size: itemBuffer[0], should be 3
+                        RegisterId: itemBuffer[1],
+                        RegisterValue: BitConverter.ToUInt16(itemBuffer[2..])
+                    );
+                    items = items.Add(item);
+                }
+            }
+            return new RegistersResponse(apiVersion, errorCode, items);
+        }
+        internal UndumpResponse BuildUndumpResponse(byte apiVersion, ErrorCode errorCode, ReadOnlySpan<byte> buffer)
+        {
+            if (errorCode == ErrorCode.OK)
+            {
+                return new UndumpResponse(apiVersion, errorCode, ProgramCounterPosition: BitConverter.ToUInt16(buffer));
+            }
+            else
+            {
+                return new UndumpResponse(apiVersion, errorCode, ProgramCounterPosition: default);
+            }
+        }
+        internal ResourceGetResponse BuildResourceGetResponse(byte apiVersion, ErrorCode errorCode, ReadOnlySpan<byte> buffer)
+        {
+            if (errorCode == ErrorCode.OK)
+            {
+                ResourceType resourceType = (ResourceType)buffer[0];
+                byte length = buffer[1];
+                var data = buffer.Slice(2, length);
+                Resource resource;
+                switch (resourceType)
+                {
+                    case ResourceType.String:
+                        resource = new StringResource(Encoding.ASCII.GetString(data));
+                        break;
+                    case ResourceType.Integer:
+                        resource = new IntegerResource(BitConverter.ToInt32(data));
+                        break;
+                    default:
+                        throw new Exception($"Unknown resource type {resourceType}");
+                }
+                return new ResourceGetResponse(apiVersion, errorCode, resource);
+            }
+            else
+            {
+                return new ResourceGetResponse(apiVersion, errorCode, Resource: default);
+            }
+        }
+        internal JamResponse BuildJamResponse(byte apiVersion, ErrorCode errorCode, ReadOnlySpan<byte> buffer)
+        {
+            if (errorCode == ErrorCode.OK)
+            {
+                return new JamResponse(apiVersion, errorCode, ProgramCounterPosition: BitConverter.ToUInt16(buffer));
+            }
+            else
+            {
+                return new JamResponse(apiVersion, errorCode, ProgramCounterPosition: default);
+            }
+        }
+        internal StoppedResponse BuildStoppedResponse(byte apiVersion, ErrorCode errorCode, ReadOnlySpan<byte> buffer)
+        {
+            if (errorCode == ErrorCode.OK)
+            {
+                return new StoppedResponse(apiVersion, errorCode, ProgramCounterPosition: BitConverter.ToUInt16(buffer));
+            }
+            else
+            {
+                return new StoppedResponse(apiVersion, errorCode, ProgramCounterPosition: default);
+            }
+        }
+        internal ResumedResponse BuildResumedResponse(byte apiVersion, ErrorCode errorCode, ReadOnlySpan<byte> buffer)
+        {
+            if (errorCode == ErrorCode.OK)
+            {
+                return new ResumedResponse(apiVersion, errorCode, ProgramCounterPosition: BitConverter.ToUInt16(buffer));
+            }
+            else
+            {
+                return new ResumedResponse(apiVersion, errorCode, ProgramCounterPosition: default);
+            }
+        }
+        internal BanksAvailableResponse BuildBanksAvailableResponse(byte apiVersion, ErrorCode errorCode, ReadOnlySpan<byte> buffer)
+        {
+            var items = ImmutableArray<BankItem>.Empty;
+            if (errorCode == ErrorCode.OK)
+            {
+                ushort itemsCount = BitConverter.ToUInt16(buffer);
+                var itemBuffer = buffer.Slice(2);
+                int offset = 0;
+                for (ushort i = 0; i < itemsCount; i++)
+                {
+                    itemBuffer = itemBuffer.Slice(offset);
+                    byte itemSize = itemBuffer[0];
+                    ushort bankId = BitConverter.ToUInt16(itemBuffer[1..]);
+                    byte nameLength = itemBuffer[3];
+                    string name = Encoding.ASCII.GetString(buffer.Slice(4, nameLength));
+
+                    var item = new BankItem(bankId, name);
+                    items = items.Add(item);
+                    offset += itemSize + 1;
+                }
+            }
+            return new BanksAvailableResponse(apiVersion, errorCode, items);
+        }
+        internal RegistersAvailableResponse BuildRegistersAvailableResponse(byte apiVersion, ErrorCode errorCode, ReadOnlySpan<byte> buffer)
+        {
+            var items = ImmutableArray<FullRegisterItem>.Empty;
+            if (errorCode == ErrorCode.OK)
+            {
+                ushort itemsCount = BitConverter.ToUInt16(buffer);
+                var itemBuffer = buffer.Slice(2);
+                int offset = 0;
+                for (ushort i = 0; i < itemsCount; i++)
+                {
+                    itemBuffer = itemBuffer.Slice(offset);
+                    byte itemSize = itemBuffer[0];
+                    byte registerId = itemBuffer[1];
+                    byte registerSize = itemBuffer[2];
+                    byte nameLength = itemBuffer[3];
+                    string name = Encoding.ASCII.GetString(buffer.Slice(4, nameLength));
+
+                    var item = new FullRegisterItem(registerId, registerSize, name);
+                    items = items.Add(item);
+                    offset += itemSize + 1;
+                }
+            }
+            return new RegistersAvailableResponse(apiVersion, errorCode, items);
+        }
+        internal DisplayGetResponse BuildDisplayGetResponse(byte apiVersion, ErrorCode errorCode, ReadOnlySpan<byte> buffer)
+        {
+            if (errorCode == ErrorCode.OK)
+            {
+                uint infoLength = BitConverter.ToUInt32(buffer);
+                uint mainLength = BitConverter.ToUInt32(buffer[4..]);
+                uint bufferLength = BitConverter.ToUInt32(buffer[8..]);
+                ushort debugWidth = BitConverter.ToUInt16(buffer[12..]);
+                ushort debugHeight = BitConverter.ToUInt16(buffer[14..]);
+                ushort debugOffsetX = BitConverter.ToUInt16(buffer[16..]);
+                ushort debugOffsetY = BitConverter.ToUInt16(buffer[18..]);
+                ushort innerWidth = BitConverter.ToUInt16(buffer[20..]);
+                ushort innerHeight = BitConverter.ToUInt16(buffer[22..]);
+                var image = BufferManager.GetBuffer(bufferLength);
+                buffer.Slice((int)infoLength, (int)bufferLength).CopyTo(image.Data);
+                return new DisplayGetResponse(apiVersion, errorCode, debugWidth, debugHeight, debugOffsetX, debugOffsetY, innerWidth, innerHeight, image);
+            }
+            else
+            {
+                return new DisplayGetResponse(apiVersion, errorCode, default, default, default, default, default, default, ManagedBuffer.Empy);
+            }
+        }
+        internal EmptyViceResponse BuildEmptyResponse(byte apiVersion, ErrorCode errorCode) => new EmptyViceResponse(apiVersion, errorCode);
     }
 }

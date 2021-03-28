@@ -1,10 +1,11 @@
 ﻿using System;
+using System.Text;
 
 namespace Righthand.ViceMonitor.Bridge.Commands
 {
     public record CheckpointSetCommand(ushort StartAddress, ushort EndAddress, bool StopWhenHit, bool Enabled, CpuOperation CpuOperation,
         bool Temporary)
-        : ViceCommand<CheckpointSetResponse>(CommandType.CheckpointSet)
+        : ViceCommand<CheckpointResponse>(CommandType.CheckpointSet)
     {
         public override uint ContentLength { get; } = sizeof(ushort) + sizeof(ushort) + sizeof(bool) + sizeof(bool) + sizeof(CpuOperation) + sizeof(bool);
         public override void WriteContent(Span<byte> buffer)
