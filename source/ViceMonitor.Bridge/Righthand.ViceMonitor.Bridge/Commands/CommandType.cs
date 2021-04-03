@@ -23,5 +23,9 @@
         BanksAvailable      = 0x82,
         RegistersAvailable  = 0x83,
         DisplayGet          = 0x84,
+        Exit                = 0x88,
+        Quit                = 0xbb,
+        Reset               = 0xcc,
+        AutoStart           = 0xdd,
     }
 }

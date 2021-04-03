@@ -52,6 +52,10 @@ namespace Righthand.ViceMonitor.Bridge.Commands
                 ResponseType.BanksAvailable     => BuildBanksAvailableResponse(apiVersion, errorCode, buffer),
                 ResponseType.RegistersAvailable => BuildRegistersAvailableResponse(apiVersion, errorCode, buffer),
                 ResponseType.DisplayGet         => BuildDisplayGetResponse(apiVersion, errorCode, buffer),
+                ResponseType.Exit               => BuildEmptyResponse(apiVersion, errorCode),
+                ResponseType.Quit               => BuildEmptyResponse(apiVersion, errorCode),
+                ResponseType.Reset              => BuildEmptyResponse(apiVersion, errorCode),
+                ResponseType.AutoStart          => BuildEmptyResponse(apiVersion, errorCode),
                 //_ => throw new Exception($"Unknown response type {responseType}"),
                 _ => new EmptyViceResponse(apiVersion, errorCode),
             };
