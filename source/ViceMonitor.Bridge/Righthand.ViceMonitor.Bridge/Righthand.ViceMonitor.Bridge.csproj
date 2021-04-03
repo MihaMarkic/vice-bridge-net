@@ -2,8 +2,22 @@
 
   <PropertyGroup>
     <TargetFramework>net5.0</TargetFramework>
-    <RootNamespace>Righthand.ViceMonitor.Bridge</RootNamespace>
     <Nullable>enable</Nullable>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+  </PropertyGroup>
+  <PropertyGroup>
+    <PackageId>Righthand.Vice.Bridge</PackageId>
+    <Title>Righthand Vice.Bridge</Title>
+    <Description>Bridge for Vice's binary monitor.</Description>
+    <PackageTags>Vice</PackageTags>
+    <Authors>Miha Markic</Authors>
+    <Owners>Miha Markic</Owners>
+    <RepositoryUrl>https://github.com/MihaMarkic/vice-bridge-net.git</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageProjectUrl>https://github.com/MihaMarkic/vice-bridge-net</PackageProjectUrl>
+    <!--<PackageIcon>icon.png</PackageIcon>-->
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
   </PropertyGroup>
   <ItemGroup>
     <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleToAttribute">
@@ -15,6 +29,9 @@
     <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="5.0.0" />
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="5.0.0" />
     <PackageReference Include="System.Memory" Version="4.5.4" />
+    <PackageReference Include="Microsoft.SourceLink.GitHub" Version="1.0.0">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
   </ItemGroup>
-
 </Project>
