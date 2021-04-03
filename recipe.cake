@@ -5,7 +5,7 @@ Environment.SetVariableNames();
 BuildParameters.SetParameters(
     context: Context,
     buildSystem: BuildSystem,
-    sourceDirectoryPath: "./source",
+    sourceDirectoryPath: "./source/ViceMonitor.Bridge",
     title: "Righthand.Vice.Bridge",
     repositoryOwner: "MihaMarkic",
     repositoryName: "vice-bridge-net",
