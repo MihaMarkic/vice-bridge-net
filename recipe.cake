@@ -10,7 +10,6 @@ BuildParameters.SetParameters(
     repositoryOwner: "MihaMarkic",
     repositoryName: "vice-bridge-net",
     appVeyorAccountName: "MihaMarkic",
-	shouldPublishMyGet: false,
 	shouldRunDupFinder: false,
     shouldRunInspectCode: false,
 	shouldRunCodecov: false,
