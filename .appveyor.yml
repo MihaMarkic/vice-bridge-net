@@ -32,7 +32,7 @@ branches:
   # Whitelist
   only:
     - develop
-    - master
+    - main
     - /release/.*/
     - /hotfix/.*/
 
