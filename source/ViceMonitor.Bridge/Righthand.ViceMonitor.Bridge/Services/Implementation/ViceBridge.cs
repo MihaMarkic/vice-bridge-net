@@ -183,8 +183,8 @@ namespace Righthand.ViceMonitor.Bridge.Services.Implementation
             using (var headerBuffer = byteArrayPool.GetBuffer(12))
             {
                 await ReadByteArrayAsync(socket, headerBuffer, ct).ConfigureAwait(false);
-                uint responseBodyLength = responseBuilder.GetReponseBodyLength(headerBuffer.Data.AsSpan());
-                logger.LogDebug($"Response body length is {responseBodyLength}");
+                uint responseBodyLength = responseBuilder.GetResponseBodyLength(headerBuffer.Data.AsSpan());
+                logger.LogDebug($"Response body length is {responseBodyLength:#,##0}B");
                 using (var bodyBuffer = byteArrayPool.GetBuffer(responseBodyLength))
                 {
                     await ReadByteArrayAsync(socket, bodyBuffer, ct);

@@ -1,12 +1,11 @@
 ﻿using System;
 using System.Collections.Immutable;
-using System.Globalization;
 using System.Text;
 using Microsoft.Extensions.Logging;
-using static Righthand.ViceMonitor.Bridge.Commands.RegistersResponse;
 
 namespace Righthand.ViceMonitor.Bridge.Commands
 {
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Performance", "CA1822:Mark members as static", Justification = "IoC")]
     public class ResponseBuilder
     {
         readonly ILogger<ResponseBuilder> logger;
@@ -14,7 +13,8 @@ namespace Righthand.ViceMonitor.Bridge.Commands
         {
             this.logger = logger;
         }
-        public uint GetReponseBodyLength(ReadOnlySpan<byte> header) => BitConverter.ToUInt32(header[2..]);
+
+        internal uint GetResponseBodyLength(ReadOnlySpan<byte> header) => BitConverter.ToUInt32(header[2..]);
         public (ViceResponse Response, uint RequestId) Build(ReadOnlySpan<byte> header, ReadOnlySpan<byte> buffer)
         {
             byte stx = header[0]; // should be STX
@@ -27,7 +27,7 @@ namespace Righthand.ViceMonitor.Bridge.Commands
             {
                 throw new Exception($"Unknown API version {apiVersion}");
             }
-            uint length = GetReponseBodyLength(header);
+            uint length = GetResponseBodyLength(header);
             var responseType = (ResponseType)header[6];
             var errorCode = (ErrorCode)header[7];
             uint requestId = BitConverter.ToUInt32(header[8..]);
@@ -50,7 +50,8 @@ namespace Righthand.ViceMonitor.Bridge.Commands
                 ResponseType.ExecuteUntilReturn => BuildEmptyResponse(apiVersion, errorCode),
                 ResponseType.Ping               => BuildEmptyResponse(apiVersion, errorCode),
                 ResponseType.BanksAvailable     => BuildBanksAvailableResponse(apiVersion, errorCode, buffer),
-                ResponseType.RegistersAvailable  => BuildRegistersAvailableResponse(apiVersion, errorCode, buffer),
+                ResponseType.RegistersAvailable => BuildRegistersAvailableResponse(apiVersion, errorCode, buffer),
+                ResponseType.DisplayGet         => BuildDisplayGetResponse(apiVersion, errorCode, buffer),
                 //_ => throw new Exception($"Unknown response type {responseType}"),
                 _ => new EmptyViceResponse(apiVersion, errorCode),
             };
@@ -103,7 +104,7 @@ namespace Righthand.ViceMonitor.Bridge.Commands
                 ushort itemsCount = BitConverter.ToUInt16(buffer);
                 for (ushort i = 0; i < itemsCount; i++)
                 {
-                    var itemBuffer = buffer.Slice((int)(2 + i * RegisterItem.ContentLength));
+                    var itemBuffer = buffer[(int)(2 + i * RegisterItem.ContentLength)..];
                     System.Diagnostics.Debug.Assert(itemBuffer[0] == 3);
                     var item = new RegisterItem(
                         //Size: itemBuffer[0], should be 3
@@ -133,18 +134,12 @@ namespace Righthand.ViceMonitor.Bridge.Commands
                 ResourceType resourceType = (ResourceType)buffer[0];
                 byte length = buffer[1];
                 var data = buffer.Slice(2, length);
-                Resource resource;
-                switch (resourceType)
+                Resource resource = resourceType switch
                 {
-                    case ResourceType.String:
-                        resource = new StringResource(Encoding.ASCII.GetString(data));
-                        break;
-                    case ResourceType.Integer:
-                        resource = new IntegerResource(BitConverter.ToInt32(data));
-                        break;
-                    default:
-                        throw new Exception($"Unknown resource type {resourceType}");
-                }
+                    ResourceType.String => new StringResource(Encoding.ASCII.GetString(data)),
+                    ResourceType.Integer => new IntegerResource(BitConverter.ToInt32(data)),
+                    _ => throw new Exception($"Unknown resource type {resourceType}"),
+                };
                 return new ResourceGetResponse(apiVersion, errorCode, resource);
             }
             else
@@ -191,11 +186,11 @@ namespace Righthand.ViceMonitor.Bridge.Commands
             if (errorCode == ErrorCode.OK)
             {
                 ushort itemsCount = BitConverter.ToUInt16(buffer);
-                var itemBuffer = buffer.Slice(2);
+                var itemBuffer = buffer[2..];
                 int offset = 0;
                 for (ushort i = 0; i < itemsCount; i++)
                 {
-                    itemBuffer = itemBuffer.Slice(offset);
+                    itemBuffer = itemBuffer[offset..];
                     byte itemSize = itemBuffer[0];
                     ushort bankId = BitConverter.ToUInt16(itemBuffer[1..]);
                     byte nameLength = itemBuffer[3];
@@ -214,11 +209,11 @@ namespace Righthand.ViceMonitor.Bridge.Commands
             if (errorCode == ErrorCode.OK)
             {
                 ushort itemsCount = BitConverter.ToUInt16(buffer);
-                var itemBuffer = buffer.Slice(2);
+                var itemBuffer = buffer[2..];
                 int offset = 0;
                 for (ushort i = 0; i < itemsCount; i++)
                 {
-                    itemBuffer = itemBuffer.Slice(offset);
+                    itemBuffer = itemBuffer[offset..];
                     byte itemSize = itemBuffer[0];
                     byte registerId = itemBuffer[1];
                     byte registerSize = itemBuffer[2];
@@ -246,7 +241,7 @@ namespace Righthand.ViceMonitor.Bridge.Commands
                 ushort innerWidth = BitConverter.ToUInt16(buffer[20..]);
                 ushort innerHeight = BitConverter.ToUInt16(buffer[22..]);
                 var image = BufferManager.GetBuffer(bufferLength);
-                buffer.Slice((int)infoLength, (int)bufferLength).CopyTo(image.Data);
+                buffer.Slice((int)infoLength+4, (int)bufferLength).CopyTo(image.Data);
                 return new DisplayGetResponse(apiVersion, errorCode, debugWidth, debugHeight, debugOffsetX, debugOffsetY, innerWidth, innerHeight, image);
             }
             else
@@ -254,6 +249,6 @@ namespace Righthand.ViceMonitor.Bridge.Commands
                 return new DisplayGetResponse(apiVersion, errorCode, default, default, default, default, default, default, ManagedBuffer.Empy);
             }
         }
-        internal EmptyViceResponse BuildEmptyResponse(byte apiVersion, ErrorCode errorCode) => new EmptyViceResponse(apiVersion, errorCode);
+        internal EmptyViceResponse BuildEmptyResponse(byte apiVersion, ErrorCode errorCode) => new(apiVersion, errorCode);
     }
 }
