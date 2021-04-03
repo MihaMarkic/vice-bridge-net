@@ -40,5 +40,4 @@ branches:
 #  Build Cache                    #
 #---------------------------------#
 cache:
-- src\packages -> src\**\packages.config
-- tools -> recipe.cake
+  - "tools -> recipe.cake"

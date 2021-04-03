@@ -6,7 +6,7 @@ BuildParameters.SetParameters(
     context: Context,
     buildSystem: BuildSystem,
     sourceDirectoryPath: "./source/ViceMonitor.Bridge",
-    title: "Righthand.Vice.Bridge",
+    title: "Righthand.ViceMonitor.Bridge",
     repositoryOwner: "MihaMarkic",
     repositoryName: "vice-bridge-net",
     appVeyorAccountName: "MihaMarkic",
@@ -19,7 +19,7 @@ BuildParameters.PrintParameters(Context);
 
 ToolSettings.SetToolSettings(
     context: Context,
-    dupFinderExcludePattern: new string[] { BuildParameters.RootDirectoryPath + "source/ViceMonitor.Bridge/Test/ViceMonitor.Bridge/*.cs" },
+    dupFinderExcludePattern: new string[] { BuildParameters.RootDirectoryPath + "source/ViceMonitor.Bridge/Test/Righthand.ViceMonitor.Bridge.Test/*.cs" },
     testCoverageFilter: "+[*]* -[nunit.*]* -[*.Tests]*",
     testCoverageExcludeByAttribute: "*.ExcludeFromCodeCoverage*",
     testCoverageExcludeByFile: "*/*Designer.cs;*/*.g.cs;*/*.g.i.cs");
