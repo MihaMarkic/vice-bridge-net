@@ -13,7 +13,14 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Test", "Test", "{5D14E4E9-E
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{B45EABBD-80B9-47AD-B866-715375CB4FD9}"
 	ProjectSection(SolutionItems) = preProject
+		..\..\.appveyor.yml = ..\..\.appveyor.yml
+		..\..\.gitattributes = ..\..\.gitattributes
+		..\..\.gitignore = ..\..\.gitignore
+		..\..\build.ps1 = ..\..\build.ps1
+		..\..\build.sh = ..\..\build.sh
+		..\..\GitReleaseManager.yaml = ..\..\GitReleaseManager.yaml
 		..\..\README.md = ..\..\README.md
+		..\..\recipe.cake = ..\..\recipe.cake
 	EndProjectSection
 EndProject
 Global
