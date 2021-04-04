@@ -85,21 +85,21 @@ namespace Righthand.ViceMonitor.Bridge.Commands
     /// <param name="Resource"></param>
     public record ResourceGetResponse(byte ApiVersion, ErrorCode ErrorCode, Resource? Resource) : ViceResponse(ApiVersion, ErrorCode);
     /// <summary>
-    /// Response to <see cref="Righthand.ViceMonitor.Bridge.Commands.JamCommand"/>.
+    /// When the CPU jams.
     /// </summary>
     /// <param name="ApiVersion"><inheritdoc /></param>
     /// <param name="ErrorCode"><inheritdoc /></param>
     /// <param name="ProgramCounterPosition">The current program counter position.</param>
     public record JamResponse(byte ApiVersion, ErrorCode ErrorCode, ushort ProgramCounterPosition): ViceResponse(ApiVersion, ErrorCode);
     /// <summary>
-    /// Response to <see cref="Righthand.ViceMonitor.Bridge.Commands.StoppedCommand"/>.
+    /// When the machine stops for the monitor, either due to hitting a checkpoint or stepping.
     /// </summary>
     /// <param name="ApiVersion"><inheritdoc /></param>
     /// <param name="ErrorCode"><inheritdoc /></param>
     /// <param name="ProgramCounterPosition">The current program counter position.</param>
     public record StoppedResponse(byte ApiVersion, ErrorCode ErrorCode, ushort ProgramCounterPosition) : ViceResponse(ApiVersion, ErrorCode);
     /// <summary>
-    /// Response to <see cref="Righthand.ViceMonitor.Bridge.Commands.ResumedCommand"/>.
+    /// When the machine resumes execution for any reason.
     /// </summary>
     /// <param name="ApiVersion"><inheritdoc /></param>
     /// <param name="ErrorCode"><inheritdoc /></param>

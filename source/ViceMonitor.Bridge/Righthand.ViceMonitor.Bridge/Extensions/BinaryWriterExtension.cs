@@ -1,8 +1,8 @@
 ﻿namespace System.IO
 {
-    public static class BinaryWriterExtension
+    internal static class BinaryWriterExtension
     {
-        public static void WriteBoolAsByte(this BinaryWriter writer, bool value)
+        internal static void WriteBoolAsByte(this BinaryWriter writer, bool value)
         {
             writer.Write((byte)(value ? 1 : 0));
         }
