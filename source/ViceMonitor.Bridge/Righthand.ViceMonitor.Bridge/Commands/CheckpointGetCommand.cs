@@ -6,7 +6,7 @@ namespace Righthand.ViceMonitor.Bridge.Commands
     /// Gets any type of checkpoint. (break, watch, trace)
     /// </summary>
     /// <param name="CheckpointNumber"></param>
-    public record CheckpointGetCommand(uint CheckpointNumber) : ViceCommand<CheckpointResponse>(CommandType.CheckpointGet)
+    public record CheckpointGetCommand(uint CheckpointNumber) : ViceCommand<CheckpointInfoResponse>(CommandType.CheckpointGet)
     {
         /// <inheritdoc />
         public override uint ContentLength => sizeof(uint);

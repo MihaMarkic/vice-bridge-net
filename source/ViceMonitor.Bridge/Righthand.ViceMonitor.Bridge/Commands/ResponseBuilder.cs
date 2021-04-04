@@ -36,7 +36,8 @@ namespace Righthand.ViceMonitor.Bridge.Commands
             {
                 ResponseType.MemoryGet          => BuildMemoryGetResponse(apiVersion, errorCode, buffer),
                 ResponseType.MemorySet          => BuildEmptyResponse(apiVersion, errorCode),
-                ResponseType.CheckpointInfo         => BuildCheckpointResponse(apiVersion, errorCode, buffer),
+                ResponseType.CheckpointInfo     => BuildCheckpointInfoResponse(apiVersion, errorCode, buffer),
+                ResponseType.CheckpointList     => BuildCheckpointListResponse(apiVersion, errorCode, buffer),
                 ResponseType.Registers          => BuildRegistersResponse(apiVersion, errorCode, buffer),
                 ResponseType.Dump               => BuildEmptyResponse(apiVersion, errorCode),
                 ResponseType.Undump             => BuildUndumpResponse(apiVersion, errorCode, buffer),
@@ -77,11 +78,11 @@ namespace Righthand.ViceMonitor.Bridge.Commands
             }
             return new MemoryGetResponse(apiVersion, errorCode, segmentBuffer);
         }
-        internal CheckpointResponse BuildCheckpointResponse(byte apiVersion, ErrorCode errorCode, ReadOnlySpan<byte> buffer)
+        internal CheckpointInfoResponse BuildCheckpointInfoResponse(byte apiVersion, ErrorCode errorCode, ReadOnlySpan<byte> buffer)
         {
             if (errorCode == ErrorCode.OK)
             {
-                return new CheckpointResponse(apiVersion, errorCode,
+                return new CheckpointInfoResponse(apiVersion, errorCode,
                     CheckpointNumber: BitConverter.ToUInt32(buffer),
                     CurrentlyHit: BitConverter.ToBoolean(buffer[4..]),
                     StartAddress: BitConverter.ToUInt16(buffer[5..]),
@@ -96,8 +97,20 @@ namespace Righthand.ViceMonitor.Bridge.Commands
             }
             else
             {
-                return new CheckpointResponse(apiVersion, errorCode, default, default, default, default,
+                return new CheckpointInfoResponse(apiVersion, errorCode, default, default, default, default,
                     default, default, default, default, default, default, default);
+            }
+        }
+        internal CheckpointListResponse BuildCheckpointListResponse(byte apiVersion, ErrorCode errorCode, ReadOnlySpan<byte> buffer)
+        {
+            if (errorCode == ErrorCode.OK)
+            {
+                return new CheckpointListResponse(apiVersion, errorCode, 
+                    TotalNumberOfCheckpoints: BitConverter.ToUInt32(buffer));
+            }
+            else
+            {
+                return new CheckpointListResponse(apiVersion, errorCode, default);
             }
         }
         internal RegistersResponse BuildRegistersResponse(byte apiVersion, ErrorCode errorCode, ReadOnlySpan<byte> buffer)

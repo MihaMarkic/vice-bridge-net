@@ -4,6 +4,70 @@
         <name>Righthand.ViceMonitor.Bridge</name>
     </assembly>
     <members>
+        <member name="T:Righthand.ViceMonitor.Bridge.Commands.AdvanceInstructionCommand">
+            <summary>
+            Step over a certain number of instructions. 
+            </summary>
+            <param name="StepOverSubroutine">Should subroutines count as a single instruction?</param>
+            <param name="NumberOfInstructions">How many instructions to step over.</param>
+        </member>
+        <member name="M:Righthand.ViceMonitor.Bridge.Commands.AdvanceInstructionCommand.#ctor(System.Boolean,System.UInt16)">
+            <summary>
+            Step over a certain number of instructions. 
+            </summary>
+            <param name="StepOverSubroutine">Should subroutines count as a single instruction?</param>
+            <param name="NumberOfInstructions">How many instructions to step over.</param>
+        </member>
+        <member name="P:Righthand.ViceMonitor.Bridge.Commands.AdvanceInstructionCommand.ContentLength">
+            <inheritdoc />
+        </member>
+        <member name="M:Righthand.ViceMonitor.Bridge.Commands.AdvanceInstructionCommand.WriteContent(System.Span{System.Byte})">
+            <inheritdoc />
+        </member>
+        <member name="T:Righthand.ViceMonitor.Bridge.Commands.AutoStartCommand">
+            <summary>
+            Load a program then return to the monitor 
+            </summary>
+        </member>
+        <member name="P:Righthand.ViceMonitor.Bridge.Commands.AutoStartCommand.RunAfterLoading">
+            <summary>
+            Run after loading?
+            </summary>
+        </member>
+        <member name="P:Righthand.ViceMonitor.Bridge.Commands.AutoStartCommand.FileIndex">
+            <summary>
+            The index of the file to execute, if a disk image. 0x00 is the default value.
+            </summary>
+        </member>
+        <member name="P:Righthand.ViceMonitor.Bridge.Commands.AutoStartCommand.Filename">
+            <summary>
+            The filename to autoload. 
+            </summary>
+        </member>
+        <member name="M:Righthand.ViceMonitor.Bridge.Commands.AutoStartCommand.#ctor(System.Boolean,System.UInt16,System.String)">
+            <summary>
+            Creates an instance of <see cref="T:Righthand.ViceMonitor.Bridge.Commands.AutoStartCommand"/>.
+            </summary>
+            <param name="runAfterLoading">Run after loading?</param>
+            <param name="fileIndex">The index of the file to execute, if a disk image. 0x00 is the default value.</param>
+            <param name="filename">The filename to autoload. </param>
+        </member>
+        <member name="P:Righthand.ViceMonitor.Bridge.Commands.AutoStartCommand.ContentLength">
+            <inheritdoc />
+        </member>
+        <member name="M:Righthand.ViceMonitor.Bridge.Commands.AutoStartCommand.WriteContent(System.Span{System.Byte})">
+            <inheritdoc />
+        </member>
+        <member name="T:Righthand.ViceMonitor.Bridge.Commands.BanksAvailableCommand">
+            <summary>
+            Gives a listing of all the bank IDs for the running machine with their names. 
+            </summary>
+        </member>
+        <member name="M:Righthand.ViceMonitor.Bridge.Commands.BanksAvailableCommand.#ctor">
+            <summary>
+            Gives a listing of all the bank IDs for the running machine with their names. 
+            </summary>
+        </member>
         <member name="T:Righthand.ViceMonitor.Bridge.Commands.CheckpointDeleteCommand">
             <summary>
             Deletes any type of checkpoint. (break, watch, trace) 
@@ -150,6 +214,26 @@
             Exec
             </summary>
         </member>
+        <member name="T:Righthand.ViceMonitor.Bridge.Commands.DisplayGetCommand">
+            <summary>
+            Gets the current screen in a requested bit format. 
+            </summary>
+            <param name="UseVic">Must be included, but ignored for all but the C128. If true, (0x01) the screen returned will be from the VIC-II. If false (0x00), it will be from the VDC.</param>
+            <param name="Format"></param>
+        </member>
+        <member name="M:Righthand.ViceMonitor.Bridge.Commands.DisplayGetCommand.#ctor(System.Boolean,Righthand.ViceMonitor.Bridge.Commands.ImageFormat)">
+            <summary>
+            Gets the current screen in a requested bit format. 
+            </summary>
+            <param name="UseVic">Must be included, but ignored for all but the C128. If true, (0x01) the screen returned will be from the VIC-II. If false (0x00), it will be from the VDC.</param>
+            <param name="Format"></param>
+        </member>
+        <member name="P:Righthand.ViceMonitor.Bridge.Commands.DisplayGetCommand.ContentLength">
+            <inheritdoc />
+        </member>
+        <member name="M:Righthand.ViceMonitor.Bridge.Commands.DisplayGetCommand.WriteContent(System.Span{System.Byte})">
+            <inheritdoc />
+        </member>
         <member name="T:Righthand.ViceMonitor.Bridge.Commands.DumpCommand">
             <summary>
             Saves the machine state to a file. 
@@ -184,6 +268,58 @@
         <member name="M:Righthand.ViceMonitor.Bridge.Commands.DumpCommand.WriteContent(System.Span{System.Byte})">
             <inheritdoc />
         </member>
+        <member name="T:Righthand.ViceMonitor.Bridge.Commands.ExecuteUntilReturnCommand">
+            <summary>
+            Continues execution and returns to the monitor just after the next RTS or RTI is executed.
+            </summary>
+            <remarks>This command is the same as "return" in the text monitor.</remarks>
+        </member>
+        <member name="M:Righthand.ViceMonitor.Bridge.Commands.ExecuteUntilReturnCommand.#ctor">
+            <summary>
+            Continues execution and returns to the monitor just after the next RTS or RTI is executed.
+            </summary>
+            <remarks>This command is the same as "return" in the text monitor.</remarks>
+        </member>
+        <member name="T:Righthand.ViceMonitor.Bridge.Commands.ExitCommand">
+            <summary>
+            Exit the monitor until the next breakpoint. 
+            </summary>
+        </member>
+        <member name="M:Righthand.ViceMonitor.Bridge.Commands.ExitCommand.#ctor">
+            <summary>
+            Exit the monitor until the next breakpoint. 
+            </summary>
+        </member>
+        <member name="T:Righthand.ViceMonitor.Bridge.Commands.ImageFormat">
+            <summary>
+            Image format
+            </summary>
+        </member>
+        <member name="F:Righthand.ViceMonitor.Bridge.Commands.ImageFormat.Indexed">
+            <summary>
+            Indexed, 8 bit
+            </summary>
+        </member>
+        <member name="F:Righthand.ViceMonitor.Bridge.Commands.ImageFormat.Rgb">
+            <summary>
+            RGB, 24 bit
+            </summary>
+        </member>
+        <member name="F:Righthand.ViceMonitor.Bridge.Commands.ImageFormat.Bgr">
+            <summary>
+            BGR, 24 bit
+            </summary>
+        </member>
+        <member name="F:Righthand.ViceMonitor.Bridge.Commands.ImageFormat.Rgba">
+            <summary>
+            RGBA, 32 bit
+            </summary>
+        </member>
+        <member name="F:Righthand.ViceMonitor.Bridge.Commands.ImageFormat.Bgra">
+            <summary>
+            BGRA, 32 bit
+            </summary>
+        </member>
         <member name="T:Righthand.ViceMonitor.Bridge.Commands.IViceCommand">
             <summary>
             Provides non generic interface to <see cref="T:Righthand.ViceMonitor.Bridge.Commands.ViceCommand`1"/>.
@@ -217,6 +353,28 @@
             </summary>
             <param name="requestId"></param>
             <returns></returns>
+        </member>
+        <member name="T:Righthand.ViceMonitor.Bridge.Commands.KeyboardFeedCommand">
+            <summary>
+            Add text to the keyboard buffer. 
+            </summary>
+        </member>
+        <member name="P:Righthand.ViceMonitor.Bridge.Commands.KeyboardFeedCommand.Text">
+            <summary>
+            Special characters such as return are escaped with backslashes. 
+            </summary>
+        </member>
+        <member name="M:Righthand.ViceMonitor.Bridge.Commands.KeyboardFeedCommand.#ctor(System.String)">
+            <summary>
+            Creates an instance of <see cref="T:Righthand.ViceMonitor.Bridge.Commands.KeyboardFeedCommand"/>.
+            </summary>
+            <param name="text"></param>
+        </member>
+        <member name="P:Righthand.ViceMonitor.Bridge.Commands.KeyboardFeedCommand.ContentLength">
+            <inheritdoc />
+        </member>
+        <member name="M:Righthand.ViceMonitor.Bridge.Commands.KeyboardFeedCommand.WriteContent(System.Span{System.Byte})">
+            <inheritdoc />
         </member>
         <member name="T:Righthand.ViceMonitor.Bridge.Commands.MemoryGetCommand">
             <summary>
@@ -300,6 +458,44 @@
             Drive 11
             </summary>
         </member>
+        <member name="T:Righthand.ViceMonitor.Bridge.Commands.PingCommand">
+            <summary>
+            Get an empty response.
+            </summary>
+        </member>
+        <member name="M:Righthand.ViceMonitor.Bridge.Commands.PingCommand.#ctor">
+            <summary>
+            Get an empty response.
+            </summary>
+        </member>
+        <member name="T:Righthand.ViceMonitor.Bridge.Commands.QuitCommand">
+            <summary>
+            Quits VICE. 
+            </summary>
+        </member>
+        <member name="M:Righthand.ViceMonitor.Bridge.Commands.QuitCommand.#ctor">
+            <summary>
+            Quits VICE. 
+            </summary>
+        </member>
+        <member name="T:Righthand.ViceMonitor.Bridge.Commands.RegistersAvailableCommand">
+            <summary>
+            Gives a listing of all the registers for the running machine with their names. 
+            </summary>
+            <param name="MemSpace">Describes which part of the computer you want to read.</param>
+        </member>
+        <member name="M:Righthand.ViceMonitor.Bridge.Commands.RegistersAvailableCommand.#ctor(Righthand.ViceMonitor.Bridge.Commands.MemSpace)">
+            <summary>
+            Gives a listing of all the registers for the running machine with their names. 
+            </summary>
+            <param name="MemSpace">Describes which part of the computer you want to read.</param>
+        </member>
+        <member name="P:Righthand.ViceMonitor.Bridge.Commands.RegistersAvailableCommand.ContentLength">
+            <inheritdoc />
+        </member>
+        <member name="M:Righthand.ViceMonitor.Bridge.Commands.RegistersAvailableCommand.WriteContent(System.Span{System.Byte})">
+            <inheritdoc />
+        </member>
         <member name="T:Righthand.ViceMonitor.Bridge.Commands.RegistersGetCommand">
             <summary>
             Get details about the registers 
@@ -352,6 +548,97 @@
             <inheritdoc />
         </member>
         <member name="M:Righthand.ViceMonitor.Bridge.Commands.RegistersSetCommand.WriteContent(System.Span{System.Byte})">
+            <inheritdoc />
+        </member>
+        <member name="T:Righthand.ViceMonitor.Bridge.Commands.ResetCommand">
+            <summary>
+            Reset the system or a drive 
+            </summary>
+            <param name="Mode">What to reset</param>
+        </member>
+        <member name="M:Righthand.ViceMonitor.Bridge.Commands.ResetCommand.#ctor(Righthand.ViceMonitor.Bridge.Commands.ResetMode)">
+            <summary>
+            Reset the system or a drive 
+            </summary>
+            <param name="Mode">What to reset</param>
+        </member>
+        <member name="P:Righthand.ViceMonitor.Bridge.Commands.ResetCommand.ContentLength">
+            <inheritdoc />
+        </member>
+        <member name="M:Righthand.ViceMonitor.Bridge.Commands.ResetCommand.WriteContent(System.Span{System.Byte})">
+            <inheritdoc />
+        </member>
+        <member name="T:Righthand.ViceMonitor.Bridge.Commands.ResetMode">
+            <summary>
+            Reset target
+            </summary>
+        </member>
+        <member name="F:Righthand.ViceMonitor.Bridge.Commands.ResetMode.Soft">
+            <summary>
+            Soft reset system 
+            </summary>
+        </member>
+        <member name="F:Righthand.ViceMonitor.Bridge.Commands.ResetMode.Hard">
+            <summary>
+            Hard reset system 
+            </summary>
+        </member>
+        <member name="F:Righthand.ViceMonitor.Bridge.Commands.ResetMode.Drive8">
+            <summary>
+            Reset drive 8
+            </summary>
+        </member>
+        <member name="F:Righthand.ViceMonitor.Bridge.Commands.ResetMode.Drive9">
+            <summary>
+            Reset drive 9
+            </summary>
+        </member>
+        <member name="F:Righthand.ViceMonitor.Bridge.Commands.ResetMode.Drive10">
+            <summary>
+            Reset drive 10
+            </summary>
+        </member>
+        <member name="F:Righthand.ViceMonitor.Bridge.Commands.ResetMode.Drive11">
+            <summary>
+            Reset drive 11
+            </summary>
+        </member>
+        <member name="T:Righthand.ViceMonitor.Bridge.Commands.ResourceGetCommand">
+            <summary>
+            Get a resource value from the emulator. See section 6.1 Format of resource files. 
+            </summary>
+        </member>
+        <member name="P:Righthand.ViceMonitor.Bridge.Commands.ResourceGetCommand.ResourceName">
+            <summary></summary>
+        </member>
+        <member name="M:Righthand.ViceMonitor.Bridge.Commands.ResourceGetCommand.#ctor(System.String)">
+            <summary>
+            Creates an instance of <see cref="T:Righthand.ViceMonitor.Bridge.Commands.ResourceGetCommand"/>.
+            </summary>
+            <param name="resourceName"></param>
+        </member>
+        <member name="P:Righthand.ViceMonitor.Bridge.Commands.ResourceGetCommand.ContentLength">
+            <inheritdoc />
+        </member>
+        <member name="M:Righthand.ViceMonitor.Bridge.Commands.ResourceGetCommand.WriteContent(System.Span{System.Byte})">
+            <inheritdoc />
+        </member>
+        <member name="T:Righthand.ViceMonitor.Bridge.Commands.ResourceSetCommand">
+            <summary>
+            Set a resource value in the emulator. See section 6.1 Format of resource files. 
+            </summary>
+            <param name="Resource"></param>
+        </member>
+        <member name="M:Righthand.ViceMonitor.Bridge.Commands.ResourceSetCommand.#ctor(Righthand.ViceMonitor.Bridge.Commands.Resource)">
+            <summary>
+            Set a resource value in the emulator. See section 6.1 Format of resource files. 
+            </summary>
+            <param name="Resource"></param>
+        </member>
+        <member name="P:Righthand.ViceMonitor.Bridge.Commands.ResourceSetCommand.ContentLength">
+            <inheritdoc />
+        </member>
+        <member name="M:Righthand.ViceMonitor.Bridge.Commands.ResourceSetCommand.WriteContent(System.Span{System.Byte})">
             <inheritdoc />
         </member>
         <member name="F:Righthand.ViceMonitor.Bridge.Commands.ResponseType.CheckpointInfo">
@@ -482,7 +769,7 @@
             Disposes the instance.
             </summary>
         </member>
-        <member name="T:Righthand.ViceMonitor.Bridge.Commands.CheckpointResponse">
+        <member name="T:Righthand.ViceMonitor.Bridge.Commands.CheckpointInfoResponse">
             <summary>
             This response is generated by hitting a checkpoint, or by many of the checkpoint commands. 
             </summary>
@@ -500,7 +787,7 @@
             <param name="IgnoreCount"></param>
             <param name="HasCondition"></param>
         </member>
-        <member name="M:Righthand.ViceMonitor.Bridge.Commands.CheckpointResponse.#ctor(System.Byte,Righthand.ViceMonitor.Bridge.Commands.ErrorCode,System.UInt32,System.Boolean,System.UInt16,System.UInt16,System.Boolean,System.Boolean,Righthand.ViceMonitor.Bridge.Commands.CpuOperation,System.Boolean,System.UInt32,System.UInt32,System.Boolean)">
+        <member name="M:Righthand.ViceMonitor.Bridge.Commands.CheckpointInfoResponse.#ctor(System.Byte,Righthand.ViceMonitor.Bridge.Commands.ErrorCode,System.UInt32,System.Boolean,System.UInt16,System.UInt16,System.Boolean,System.Boolean,Righthand.ViceMonitor.Bridge.Commands.CpuOperation,System.Boolean,System.UInt32,System.UInt32,System.Boolean)">
             <summary>
             This response is generated by hitting a checkpoint, or by many of the checkpoint commands. 
             </summary>
@@ -536,7 +823,8 @@
         </member>
         <member name="T:Righthand.ViceMonitor.Bridge.Commands.RegistersResponse">
             <summary>
-            Response to <see cref="!:RegistersGetCommand"/>
+            Response to <see cref="T:Righthand.ViceMonitor.Bridge.Commands.RegistersGetCommand"/> and 
+            <see cref="T:Righthand.ViceMonitor.Bridge.Commands.RegistersSetCommand"/>.
             </summary>
             <param name="ApiVersion"><inheritdoc /></param>
             <param name="ErrorCode"><inheritdoc /></param>
@@ -549,7 +837,8 @@
         </member>
         <member name="M:Righthand.ViceMonitor.Bridge.Commands.RegistersResponse.#ctor(System.Byte,Righthand.ViceMonitor.Bridge.Commands.ErrorCode,System.Collections.Immutable.ImmutableArray{Righthand.ViceMonitor.Bridge.Commands.RegisterItem})">
             <summary>
-            Response to <see cref="!:RegistersGetCommand"/>
+            Response to <see cref="T:Righthand.ViceMonitor.Bridge.Commands.RegistersGetCommand"/> and 
+            <see cref="T:Righthand.ViceMonitor.Bridge.Commands.RegistersSetCommand"/>.
             </summary>
             <param name="ApiVersion"><inheritdoc /></param>
             <param name="ErrorCode"><inheritdoc /></param>
@@ -562,13 +851,168 @@
         </member>
         <member name="T:Righthand.ViceMonitor.Bridge.Commands.UndumpResponse">
             <summary>
-            Response to <see cref="!:Undu"/>
+            Response to <see cref="T:Righthand.ViceMonitor.Bridge.Commands.UndumpCommand"/>.
             </summary>
+            <param name="ApiVersion"><inheritdoc /></param>
+            <param name="ErrorCode"><inheritdoc /></param>
+            <param name="ProgramCounterPosition">The current program counter position</param>
         </member>
         <member name="M:Righthand.ViceMonitor.Bridge.Commands.UndumpResponse.#ctor(System.Byte,Righthand.ViceMonitor.Bridge.Commands.ErrorCode,System.UInt16)">
             <summary>
-            Response to <see cref="!:Undu"/>
+            Response to <see cref="T:Righthand.ViceMonitor.Bridge.Commands.UndumpCommand"/>.
             </summary>
+            <param name="ApiVersion"><inheritdoc /></param>
+            <param name="ErrorCode"><inheritdoc /></param>
+            <param name="ProgramCounterPosition">The current program counter position</param>
+        </member>
+        <member name="T:Righthand.ViceMonitor.Bridge.Commands.ResourceGetResponse">
+            <summary>
+            Response to <see cref="T:Righthand.ViceMonitor.Bridge.Commands.ResourceGetCommand"/>.
+            </summary>
+            <param name="ApiVersion"><inheritdoc /></param>
+            <param name="ErrorCode"><inheritdoc /></param>
+            <param name="Resource"></param>
+        </member>
+        <member name="M:Righthand.ViceMonitor.Bridge.Commands.ResourceGetResponse.#ctor(System.Byte,Righthand.ViceMonitor.Bridge.Commands.ErrorCode,Righthand.ViceMonitor.Bridge.Commands.Resource)">
+            <summary>
+            Response to <see cref="T:Righthand.ViceMonitor.Bridge.Commands.ResourceGetCommand"/>.
+            </summary>
+            <param name="ApiVersion"><inheritdoc /></param>
+            <param name="ErrorCode"><inheritdoc /></param>
+            <param name="Resource"></param>
+        </member>
+        <member name="T:Righthand.ViceMonitor.Bridge.Commands.JamResponse">
+            <summary>
+            Response to <see cref="!:Righthand.ViceMonitor.Bridge.Commands.JamCommand"/>.
+            </summary>
+            <param name="ApiVersion"><inheritdoc /></param>
+            <param name="ErrorCode"><inheritdoc /></param>
+            <param name="ProgramCounterPosition">The current program counter position.</param>
+        </member>
+        <member name="M:Righthand.ViceMonitor.Bridge.Commands.JamResponse.#ctor(System.Byte,Righthand.ViceMonitor.Bridge.Commands.ErrorCode,System.UInt16)">
+            <summary>
+            Response to <see cref="!:Righthand.ViceMonitor.Bridge.Commands.JamCommand"/>.
+            </summary>
+            <param name="ApiVersion"><inheritdoc /></param>
+            <param name="ErrorCode"><inheritdoc /></param>
+            <param name="ProgramCounterPosition">The current program counter position.</param>
+        </member>
+        <member name="T:Righthand.ViceMonitor.Bridge.Commands.StoppedResponse">
+            <summary>
+            Response to <see cref="!:Righthand.ViceMonitor.Bridge.Commands.StoppedCommand"/>.
+            </summary>
+            <param name="ApiVersion"><inheritdoc /></param>
+            <param name="ErrorCode"><inheritdoc /></param>
+            <param name="ProgramCounterPosition">The current program counter position.</param>
+        </member>
+        <member name="M:Righthand.ViceMonitor.Bridge.Commands.StoppedResponse.#ctor(System.Byte,Righthand.ViceMonitor.Bridge.Commands.ErrorCode,System.UInt16)">
+            <summary>
+            Response to <see cref="!:Righthand.ViceMonitor.Bridge.Commands.StoppedCommand"/>.
+            </summary>
+            <param name="ApiVersion"><inheritdoc /></param>
+            <param name="ErrorCode"><inheritdoc /></param>
+            <param name="ProgramCounterPosition">The current program counter position.</param>
+        </member>
+        <member name="T:Righthand.ViceMonitor.Bridge.Commands.ResumedResponse">
+            <summary>
+            Response to <see cref="!:Righthand.ViceMonitor.Bridge.Commands.ResumedCommand"/>.
+            </summary>
+            <param name="ApiVersion"><inheritdoc /></param>
+            <param name="ErrorCode"><inheritdoc /></param>
+            <param name="ProgramCounterPosition">The current program counter position.</param>
+        </member>
+        <member name="M:Righthand.ViceMonitor.Bridge.Commands.ResumedResponse.#ctor(System.Byte,Righthand.ViceMonitor.Bridge.Commands.ErrorCode,System.UInt16)">
+            <summary>
+            Response to <see cref="!:Righthand.ViceMonitor.Bridge.Commands.ResumedCommand"/>.
+            </summary>
+            <param name="ApiVersion"><inheritdoc /></param>
+            <param name="ErrorCode"><inheritdoc /></param>
+            <param name="ProgramCounterPosition">The current program counter position.</param>
+        </member>
+        <member name="T:Righthand.ViceMonitor.Bridge.Commands.BanksAvailableResponse">
+            <summary>
+            Response to <see cref="T:Righthand.ViceMonitor.Bridge.Commands.BanksAvailableCommand"/>.
+            </summary>
+            <param name="ApiVersion"><inheritdoc /></param>
+            <param name="ErrorCode"><inheritdoc /></param>
+            <param name="Banks"></param>
+        </member>
+        <member name="M:Righthand.ViceMonitor.Bridge.Commands.BanksAvailableResponse.#ctor(System.Byte,Righthand.ViceMonitor.Bridge.Commands.ErrorCode,System.Collections.Immutable.ImmutableArray{Righthand.ViceMonitor.Bridge.Commands.BankItem})">
+            <summary>
+            Response to <see cref="T:Righthand.ViceMonitor.Bridge.Commands.BanksAvailableCommand"/>.
+            </summary>
+            <param name="ApiVersion"><inheritdoc /></param>
+            <param name="ErrorCode"><inheritdoc /></param>
+            <param name="Banks"></param>
+        </member>
+        <member name="T:Righthand.ViceMonitor.Bridge.Commands.RegistersAvailableResponse">
+            <summary>
+            Response to <see cref="T:Righthand.ViceMonitor.Bridge.Commands.RegistersAvailableCommand"/>.
+            </summary>
+            <param name="ApiVersion"><inheritdoc /></param>
+            <param name="ErrorCode"><inheritdoc /></param>
+            /// <param name="Banks"></param>
+        </member>
+        <member name="M:Righthand.ViceMonitor.Bridge.Commands.RegistersAvailableResponse.#ctor(System.Byte,Righthand.ViceMonitor.Bridge.Commands.ErrorCode,System.Collections.Immutable.ImmutableArray{Righthand.ViceMonitor.Bridge.Commands.FullRegisterItem})">
+            <summary>
+            Response to <see cref="T:Righthand.ViceMonitor.Bridge.Commands.RegistersAvailableCommand"/>.
+            </summary>
+            <param name="ApiVersion"><inheritdoc /></param>
+            <param name="ErrorCode"><inheritdoc /></param>
+            /// <param name="Banks"></param>
+        </member>
+        <member name="T:Righthand.ViceMonitor.Bridge.Commands.DisplayGetResponse">
+            <summary>
+            Response to <see cref="T:Righthand.ViceMonitor.Bridge.Commands.BanksAvailableCommand"/>.
+            </summary>
+            <param name="ApiVersion"><inheritdoc /></param>
+            <param name="ErrorCode"><inheritdoc /></param>
+            <param name="DebugWidth"></param>
+            <param name="DebugHeight"></param>
+            <param name="DebugOffsetX"></param>
+            <param name="DebugOffsetY"></param>
+            <param name="InnerWidth">Image width</param>
+            <param name="InnerHeight">Image height</param>
+            <param name="Image">Image bytes packed into <see cref="T:Righthand.ViceMonitor.Bridge.ManagedBuffer"/>.</param>
+            <remarks>
+            Object has to be disposed once it is processed to free memory occupied by <see cref="P:Righthand.ViceMonitor.Bridge.Commands.DisplayGetResponse.Image"/>.
+            </remarks>
+        </member>
+        <member name="M:Righthand.ViceMonitor.Bridge.Commands.DisplayGetResponse.#ctor(System.Byte,Righthand.ViceMonitor.Bridge.Commands.ErrorCode,System.UInt16,System.UInt16,System.UInt16,System.UInt16,System.UInt16,System.UInt16,System.Nullable{Righthand.ViceMonitor.Bridge.ManagedBuffer})">
+            <summary>
+            Response to <see cref="T:Righthand.ViceMonitor.Bridge.Commands.BanksAvailableCommand"/>.
+            </summary>
+            <param name="ApiVersion"><inheritdoc /></param>
+            <param name="ErrorCode"><inheritdoc /></param>
+            <param name="DebugWidth"></param>
+            <param name="DebugHeight"></param>
+            <param name="DebugOffsetX"></param>
+            <param name="DebugOffsetY"></param>
+            <param name="InnerWidth">Image width</param>
+            <param name="InnerHeight">Image height</param>
+            <param name="Image">Image bytes packed into <see cref="T:Righthand.ViceMonitor.Bridge.ManagedBuffer"/>.</param>
+            <remarks>
+            Object has to be disposed once it is processed to free memory occupied by <see cref="P:Righthand.ViceMonitor.Bridge.Commands.DisplayGetResponse.Image"/>.
+            </remarks>
+        </member>
+        <member name="M:Righthand.ViceMonitor.Bridge.Commands.DisplayGetResponse.Dispose">
+            <summary>
+            Disposed the object.
+            </summary>
+        </member>
+        <member name="T:Righthand.ViceMonitor.Bridge.Commands.EmptyViceResponse">
+            <summary>
+            Empty response.
+            </summary>
+            <param name="ApiVersion"><inheritdoc /></param>
+            <param name="ErrorCode"><inheritdoc /></param>
+        </member>
+        <member name="M:Righthand.ViceMonitor.Bridge.Commands.EmptyViceResponse.#ctor(System.Byte,Righthand.ViceMonitor.Bridge.Commands.ErrorCode)">
+            <summary>
+            Empty response.
+            </summary>
+            <param name="ApiVersion"><inheritdoc /></param>
+            <param name="ErrorCode"><inheritdoc /></param>
         </member>
         <member name="E:Righthand.ViceMonitor.Bridge.Services.Implementation.ViceBridge.ViceResponse">
             <summary>

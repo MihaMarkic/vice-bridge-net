@@ -44,7 +44,7 @@ namespace Righthand.ViceMonitor.Bridge.Commands
     /// <param name="HitCount"></param>
     /// <param name="IgnoreCount"></param>
     /// <param name="HasCondition"></param>
-    public record CheckpointResponse(byte ApiVersion, ErrorCode ErrorCode, uint CheckpointNumber, bool CurrentlyHit, ushort StartAddress, ushort EndAddress,
+    public record CheckpointInfoResponse(byte ApiVersion, ErrorCode ErrorCode, uint CheckpointNumber, bool CurrentlyHit, ushort StartAddress, ushort EndAddress,
         bool StopWhenHit, bool Enabled, CpuOperation CpuOperation, bool Temporary, uint HitCount, uint IgnoreCount, bool HasCondition) 
         : ViceResponse(ApiVersion, ErrorCode);
 
@@ -57,7 +57,8 @@ namespace Righthand.ViceMonitor.Bridge.Commands
     public record CheckpointListResponse(byte ApiVersion, ErrorCode ErrorCode, uint TotalNumberOfCheckpoints) : ViceResponse(ApiVersion, ErrorCode);
 
     /// <summary>
-    /// Response to <see cref="Righthand.ViceMonitor.Bridge.Commands.RegistersGetCommand"/>.
+    /// Response to <see cref="Righthand.ViceMonitor.Bridge.Commands.RegistersGetCommand"/> and 
+    /// <see cref="Righthand.ViceMonitor.Bridge.Commands.RegistersSetCommand"/>.
     /// </summary>
     /// <param name="ApiVersion"><inheritdoc /></param>
     /// <param name="ErrorCode"><inheritdoc /></param>
@@ -83,8 +84,26 @@ namespace Righthand.ViceMonitor.Bridge.Commands
     /// <param name="ErrorCode"><inheritdoc /></param>
     /// <param name="Resource"></param>
     public record ResourceGetResponse(byte ApiVersion, ErrorCode ErrorCode, Resource? Resource) : ViceResponse(ApiVersion, ErrorCode);
+    /// <summary>
+    /// Response to <see cref="Righthand.ViceMonitor.Bridge.Commands.JamCommand"/>.
+    /// </summary>
+    /// <param name="ApiVersion"><inheritdoc /></param>
+    /// <param name="ErrorCode"><inheritdoc /></param>
+    /// <param name="ProgramCounterPosition">The current program counter position.</param>
     public record JamResponse(byte ApiVersion, ErrorCode ErrorCode, ushort ProgramCounterPosition): ViceResponse(ApiVersion, ErrorCode);
+    /// <summary>
+    /// Response to <see cref="Righthand.ViceMonitor.Bridge.Commands.StoppedCommand"/>.
+    /// </summary>
+    /// <param name="ApiVersion"><inheritdoc /></param>
+    /// <param name="ErrorCode"><inheritdoc /></param>
+    /// <param name="ProgramCounterPosition">The current program counter position.</param>
     public record StoppedResponse(byte ApiVersion, ErrorCode ErrorCode, ushort ProgramCounterPosition) : ViceResponse(ApiVersion, ErrorCode);
+    /// <summary>
+    /// Response to <see cref="Righthand.ViceMonitor.Bridge.Commands.ResumedCommand"/>.
+    /// </summary>
+    /// <param name="ApiVersion"><inheritdoc /></param>
+    /// <param name="ErrorCode"><inheritdoc /></param>
+    /// <param name="ProgramCounterPosition">The current program counter position.</param>
     public record ResumedResponse(byte ApiVersion, ErrorCode ErrorCode, ushort ProgramCounterPosition) : ViceResponse(ApiVersion, ErrorCode);
     /// <summary>
     /// Response to <see cref="Righthand.ViceMonitor.Bridge.Commands.BanksAvailableCommand"/>.
@@ -93,18 +112,44 @@ namespace Righthand.ViceMonitor.Bridge.Commands
     /// <param name="ErrorCode"><inheritdoc /></param>
     /// <param name="Banks"></param>
     public record BanksAvailableResponse(byte ApiVersion, ErrorCode ErrorCode, ImmutableArray<BankItem> Banks) : ViceResponse(ApiVersion, ErrorCode);
-
+    /// <summary>
+    /// Response to <see cref="Righthand.ViceMonitor.Bridge.Commands.RegistersAvailableCommand"/>.
+    /// </summary>
+    /// <param name="ApiVersion"><inheritdoc /></param>
+    /// <param name="ErrorCode"><inheritdoc /></param>
+    /// /// <param name="Banks"></param>
     public record RegistersAvailableResponse(byte ApiVersion, ErrorCode ErrorCode, ImmutableArray<FullRegisterItem> Banks) : ViceResponse(ApiVersion, ErrorCode);
-
+    /// <summary>
+    /// Response to <see cref="Righthand.ViceMonitor.Bridge.Commands.BanksAvailableCommand"/>.
+    /// </summary>
+    /// <param name="ApiVersion"><inheritdoc /></param>
+    /// <param name="ErrorCode"><inheritdoc /></param>
+    /// <param name="DebugWidth"></param>
+    /// <param name="DebugHeight"></param>
+    /// <param name="DebugOffsetX"></param>
+    /// <param name="DebugOffsetY"></param>
+    /// <param name="InnerWidth">Image width</param>
+    /// <param name="InnerHeight">Image height</param>
+    /// <param name="Image">Image bytes packed into <see cref="ManagedBuffer"/>.</param>
+    /// <remarks>
+    /// Object has to be disposed once it is processed to free memory occupied by <see cref="Image"/>.
+    /// </remarks>
     public record DisplayGetResponse(byte ApiVersion, ErrorCode ErrorCode, 
         ushort DebugWidth, ushort DebugHeight, ushort DebugOffsetX, ushort DebugOffsetY, ushort InnerWidth, ushort InnerHeight, ManagedBuffer? Image)
         : ViceResponse(ApiVersion, ErrorCode), IDisposable
     {
+        /// <summary>
+        /// Disposed the object.
+        /// </summary>
         public void Dispose()
         {
             Image?.Dispose();
         }
     }
-
+    /// <summary>
+    /// Empty response.
+    /// </summary>
+    /// <param name="ApiVersion"><inheritdoc /></param>
+    /// <param name="ErrorCode"><inheritdoc /></param>
     public record EmptyViceResponse(byte ApiVersion, ErrorCode ErrorCode) : ViceResponse(ApiVersion, ErrorCode);
 }

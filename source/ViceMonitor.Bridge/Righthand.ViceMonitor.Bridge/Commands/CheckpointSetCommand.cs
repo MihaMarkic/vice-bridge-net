@@ -13,7 +13,7 @@ namespace Righthand.ViceMonitor.Bridge.Commands
     /// <param name="Temporary">Deletes the checkpoint after it has been hit once. This is similar to "until" command, but it will not resume the emulator. </param>
     public record CheckpointSetCommand(ushort StartAddress, ushort EndAddress, bool StopWhenHit, bool Enabled, CpuOperation CpuOperation,
         bool Temporary)
-        : ViceCommand<CheckpointResponse>(CommandType.CheckpointSet)
+        : ViceCommand<CheckpointInfoResponse>(CommandType.CheckpointSet)
     {
         /// <inheritdoc />
         public override uint ContentLength { get; } = sizeof(ushort) + sizeof(ushort) + sizeof(bool) + sizeof(bool) + sizeof(CpuOperation) + sizeof(bool);
