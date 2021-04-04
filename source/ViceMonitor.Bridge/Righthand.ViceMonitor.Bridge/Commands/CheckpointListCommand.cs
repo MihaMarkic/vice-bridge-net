@@ -1,23 +1,12 @@
-﻿using System;
-
-namespace Righthand.ViceMonitor.Bridge.Commands
+﻿namespace Righthand.ViceMonitor.Bridge.Commands
 {
-    public record CheckpointListCommand(uint TotalCheckpointsNumber) : ViceCommand<CheckpointResponse>(CommandType.CheckpointList)
+    /// <summary>
+    /// Lists checkpoints.
+    /// </summary>
+    /// <remarks>
+    /// Emits a series of MON_RESPONSE_CHECKPOINT_INFO responses (see section 13.5.1 Checkpoint Response (0x11)) followed by0x14: MON_RESPONSE_CHECKPOINT_LIST
+    /// </remarks>
+    public record CheckpointListCommand() : ParameterlessCommand<CheckpointResponse>(CommandType.CheckpointList)
     {
-        public override uint ContentLength => sizeof(uint);
-        public override void WriteContent(Span<byte> buffer)
-        {
-            BitConverter.TryWriteBytes(buffer, TotalCheckpointsNumber);
-        }
-    }
-
-    public record CheckpointToggleCommand(uint CheckpointNumber, bool Enabled) : ViceCommand<CheckpointResponse>(CommandType.CheckpointToggle)
-    {
-        public override uint ContentLength => sizeof(uint) + sizeof(byte);
-        public override void WriteContent(Span<byte> buffer)
-        {
-            BitConverter.TryWriteBytes(buffer, CheckpointNumber);
-            buffer[4] = Enabled.AsByte();
-        }
     }
 }

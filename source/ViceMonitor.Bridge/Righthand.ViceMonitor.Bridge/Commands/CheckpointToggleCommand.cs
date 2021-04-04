@@ -3,17 +3,19 @@
 namespace Righthand.ViceMonitor.Bridge.Commands
 {
     /// <summary>
-    /// Deletes any type of checkpoint. (break, watch, trace) 
+    /// Checkpoint toggle.
     /// </summary>
     /// <param name="CheckpointNumber"></param>
-    public record CheckpointDeleteCommand(uint CheckpointNumber) : ViceCommand<CheckpointResponse>(CommandType.CheckpointDelete)
+    /// <param name="Enabled"></param>
+    public record CheckpointToggleCommand(uint CheckpointNumber, bool Enabled) : ViceCommand<CheckpointResponse>(CommandType.CheckpointToggle)
     {
         /// <inheritdoc />
-        public override uint ContentLength => sizeof(uint);
+        public override uint ContentLength => sizeof(uint) + sizeof(byte);
         /// <inheritdoc />
         public override void WriteContent(Span<byte> buffer)
         {
             BitConverter.TryWriteBytes(buffer, CheckpointNumber);
+            buffer[4] = Enabled.AsByte();
         }
     }
 }

@@ -36,7 +36,7 @@ namespace Righthand.ViceMonitor.Bridge.Commands
             {
                 ResponseType.MemoryGet          => BuildMemoryGetResponse(apiVersion, errorCode, buffer),
                 ResponseType.MemorySet          => BuildEmptyResponse(apiVersion, errorCode),
-                ResponseType.Checkpoint         => BuildCheckpointResponse(apiVersion, errorCode, buffer),
+                ResponseType.CheckpointInfo         => BuildCheckpointResponse(apiVersion, errorCode, buffer),
                 ResponseType.Registers          => BuildRegistersResponse(apiVersion, errorCode, buffer),
                 ResponseType.Dump               => BuildEmptyResponse(apiVersion, errorCode),
                 ResponseType.Undump             => BuildUndumpResponse(apiVersion, errorCode, buffer),
