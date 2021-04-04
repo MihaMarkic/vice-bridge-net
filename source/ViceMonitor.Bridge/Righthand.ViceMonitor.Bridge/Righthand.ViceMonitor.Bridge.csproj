@@ -20,7 +20,7 @@
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
-    <DocumentationFile>D:\Git\Righthand\C64\vice-bridge-net\source\ViceMonitor.Bridge\Righthand.ViceMonitor.Bridge\Righthand.ViceMonitor.Bridge.xml</DocumentationFile>
+    <DocumentationFile>Righthand.ViceMonitor.Bridge.xml</DocumentationFile>
   </PropertyGroup>
   <ItemGroup>
     <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleToAttribute">
