@@ -30,7 +30,7 @@ namespace Righthand.ViceMonitor.Bridge.Commands
         /// <summary>
         /// Task that returns the result.
         /// </summary>
-        public Task<TResponse> Result => tcs.Task;
+        public Task<TResponse> Response => tcs.Task;
         readonly TaskCompletionSource<TResponse> tcs = new ();
         /// <summary>
         /// Length of the command's body expressed in bytes.

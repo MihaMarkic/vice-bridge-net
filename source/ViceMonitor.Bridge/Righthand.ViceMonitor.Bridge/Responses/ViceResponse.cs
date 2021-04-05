@@ -55,7 +55,8 @@ namespace Righthand.ViceMonitor.Bridge.Responses
     /// <param name="ApiVersion"><inheritdoc /></param>
     /// <param name="ErrorCode"><inheritdoc /></param>
     /// <param name="TotalNumberOfCheckpoints"></param>
-    public record CheckpointListResponse(byte ApiVersion, ErrorCode ErrorCode, uint TotalNumberOfCheckpoints) : ViceResponse(ApiVersion, ErrorCode);
+    /// <param name="Info">An array of matching <see cref="CheckpointInfoResponse"/>.</param>
+    public record CheckpointListResponse(byte ApiVersion, ErrorCode ErrorCode, uint TotalNumberOfCheckpoints, ImmutableArray<CheckpointInfoResponse> Info) : ViceResponse(ApiVersion, ErrorCode);
 
     /// <summary>
     /// Response to <see cref="Righthand.ViceMonitor.Bridge.Commands.RegistersGetCommand"/> and 

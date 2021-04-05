@@ -60,7 +60,9 @@ namespace ModernVICEPDBMonitor.Playground
         {
             var options = ImmutableDictionary<string, string>.Empty
                 .Add("dg", "Display get")
-                .Add("vi", "VICE info");
+                .Add("vi", "VICE info")
+                .Add("cl", "Checkpoint list")
+                .Add("cs", "Checkpoint set");
             bool quit = false;
             while (!quit)
             {
@@ -68,7 +70,7 @@ namespace ModernVICEPDBMonitor.Playground
                 {
                     AnsiConsole.MarkupLine($"[bold]{pair.Key}[/]  ... {pair.Value}");
                 }
-                AnsiConsole.WriteLine("Type [bold]q[/] to end");
+                AnsiConsole.MarkupLine("Type [bold]q[/] to end");
                 string? command = Console.ReadLine();
                 switch (command)
                 {
@@ -78,17 +80,44 @@ namespace ModernVICEPDBMonitor.Playground
                     case "vi":
                         await ViceInfoAsync(ct);
                         break;
+                    case "cl":
+                        await CheckpointListAsync(ct);
+                        break;
+                    case "cs":
+                        await CheckpointSetAsync(ct);
+                        break;
                     case "q":
                         quit = true;
                         break;
                 }
             }
         }
+        async Task CheckpointSetAsync(CancellationToken ct)
+        {
+            var setCommand = bridge.EnqueueCommand(new CheckpointSetCommand(0x1000, 0x2000, StopWhenHit: true, Enabled: true,
+               CpuOperation: CpuOperation.Load, Temporary: true));
+            var setResponse = await setCommand.Response;
+            AnsiConsole.MarkupLine($"Set response: {setResponse.ErrorCode}");
+        }
+        async Task CheckpointListAsync(CancellationToken ct)
+        {
+            var listCommand = new CheckpointListCommand();
+            bridge.EnqueueCommand(listCommand);
+            var listResponse = await listCommand.Response;
+            AnsiConsole.MarkupLine($"Response has [bold]{listResponse.TotalNumberOfCheckpoints}[/] total number of checkpoints.");
+            AnsiConsole.MarkupLine("List");
+            int index = 0;
+            foreach (var info in listResponse.Info)
+            {
+                AnsiConsole.MarkupLine($"[bold]{index}[/]: Number:{info.CheckpointNumber} CpuOperation:{info.CpuOperation}");
+                index++;
+            }
+        }
         async Task ViceInfoAsync(CancellationToken ct)
         {
             var command = new InfoCommand();
             bridge.EnqueueCommand(command);
-            var response = await command.Result;
+            var response = await command.Response;
             AnsiConsole.MarkupLine($"VICE version RC number is [bold]{response.VersionRCNumber}[/]");
 
         }
@@ -96,7 +125,7 @@ namespace ModernVICEPDBMonitor.Playground
         {
             var command = new DisplayGetCommand(UseVic: true, ImageFormat.Rgb);
             bridge.EnqueueCommand(command);
-            var response = await command.Result;
+            var response = await command.Response;
             try
             {
                 AnsiConsole.MarkupLine($"Got response [bold]{response.GetType().Name}[/]");

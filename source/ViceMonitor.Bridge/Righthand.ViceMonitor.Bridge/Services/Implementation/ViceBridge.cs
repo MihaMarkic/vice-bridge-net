@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Buffers;
 using System.Collections.Concurrent;
+using System.Collections.Immutable;
 using System.Linq;
 using System.Net;
 using System.Net.NetworkInformation;
@@ -158,9 +159,11 @@ namespace Righthand.ViceMonitor.Bridge.Services.Implementation
             }
         }
         /// <inheritdoc />
-        public void EnqueueCommand(IViceCommand command)
+        public T EnqueueCommand<T>(T command)
+            where T: IViceCommand
         {
             commands.Enqueue(command);
+            return command;
         }
         async Task LoopAsync(Socket socket, CancellationToken ct)
         {
@@ -169,11 +172,27 @@ namespace Righthand.ViceMonitor.Bridge.Services.Implementation
                 ct.ThrowIfCancellationRequested();
                 while (commands.TryDequeue(out var command))
                 {
-                    logger.LogDebug($"Will process command {currentRequestId} of {command.GetType().Name}");
+                    logger.LogDebug($"Will process command {currentRequestId} of {command.GetType().Name} with request id {currentRequestId}");
                     await SendCommandAsync(socket, currentRequestId, command, ct).ConfigureAwait(false);
                     (command as IDisposable)?.Dispose();
-                    var response = await WaitUntilMatchesResponseAsync(socket, currentRequestId, ct).ConfigureAwait(false);
-                    logger.LogDebug($"Command {currentRequestId} of {command.GetType().Name} got response with result {response.ErrorCode}");
+                    ViceResponse response;
+                    switch (command)
+                    {
+                        // list is a special case that collects matching CheckpointInfoResponses
+                        case CheckpointListCommand listCommand:
+                            var info = ImmutableArray<CheckpointInfoResponse>.Empty;
+                            while ((response = await WaitUntilMatchesResponseAsync(socket, currentRequestId, ct).ConfigureAwait(false)) is CheckpointInfoResponse infoResponse)
+                            {
+                                info = info.Add(infoResponse);
+                            }
+                            var listResponse = (CheckpointListResponse)response;
+                            response = listResponse with { Info = info };
+                            break;
+                        default:
+                            response = await WaitUntilMatchesResponseAsync(socket, currentRequestId, ct).ConfigureAwait(false);
+                            logger.LogDebug($"Command {currentRequestId} of {command.GetType().Name} got response with result {response.ErrorCode}");
+                            break;
+                    }
                     command.SetResult(response);
                     currentRequestId++;
                 }

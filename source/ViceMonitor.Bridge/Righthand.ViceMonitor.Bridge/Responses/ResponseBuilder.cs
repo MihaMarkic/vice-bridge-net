@@ -116,11 +116,12 @@ namespace Righthand.ViceMonitor.Bridge.Responses
             if (errorCode == ErrorCode.OK)
             {
                 return new CheckpointListResponse(apiVersion, errorCode, 
-                    TotalNumberOfCheckpoints: BitConverter.ToUInt32(buffer));
+                    TotalNumberOfCheckpoints: BitConverter.ToUInt32(buffer),
+                    Info: ImmutableArray<CheckpointInfoResponse>.Empty);
             }
             else
             {
-                return new CheckpointListResponse(apiVersion, errorCode, default);
+                return new CheckpointListResponse(apiVersion, errorCode, default, default);
             }
         }
         internal RegistersResponse BuildRegistersResponse(byte apiVersion, ErrorCode errorCode, ReadOnlySpan<byte> buffer)

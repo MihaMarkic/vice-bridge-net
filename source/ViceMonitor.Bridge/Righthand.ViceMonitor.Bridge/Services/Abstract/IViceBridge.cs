@@ -31,8 +31,11 @@ namespace Righthand.ViceMonitor.Bridge.Services.Abstract
         /// <summary>
         /// Enqueues command for sending
         /// </summary>
+        /// <typeparam name="T">Command type</typeparam>
         /// <param name="command">An instance of <see cref="ViceCommand{TResponse}"/> subtype to enqueue.</param>
-        void EnqueueCommand(IViceCommand command);
+        /// <returns>An instance of passed in command.</returns>
+        T EnqueueCommand<T>(T command)
+            where T : IViceCommand;
         /// <summary>
         /// Occurs when an unbound event arrived.
         /// </summary>
