@@ -5,7 +5,9 @@ using Righthand.ViceMonitor.Bridge.Commands;
 using Righthand.ViceMonitor.Bridge.Services.Abstract;
 using Spectre.Console;
 using System;
+using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Diagnostics;
 using System.IO;
 using System.Net;
 using System.Threading;
@@ -58,11 +60,12 @@ namespace ModernVICEPDBMonitor.Playground
 
         async Task ShowMenuAsync(CancellationToken ct)
         {
-            var options = ImmutableDictionary<string, string>.Empty
-                .Add("dg", "Display get")
-                .Add("vi", "VICE info")
-                .Add("cl", "Checkpoint list")
-                .Add("cs", "Checkpoint set");
+            var options = ImmutableArray<KeyValuePair<string, string>>.Empty
+                .Add(new KeyValuePair<string, string>("dg", "Display get"))
+                //.Add("vi", "VICE info")
+                .Add(new KeyValuePair<string, string>("cl", "Checkpoint list"))
+                .Add(new KeyValuePair<string, string>("cs", "Checkpoint set"))
+                .Add(new KeyValuePair<string, string>("p", "Ping"));
             bool quit = false;
             while (!quit)
             {
@@ -77,20 +80,30 @@ namespace ModernVICEPDBMonitor.Playground
                     case "dg":
                         await GetDisplayAsync(ct);
                         break;
-                    case "vi":
-                        await ViceInfoAsync(ct);
-                        break;
+                    //case "vi":
+                    //    await ViceInfoAsync(ct);
+                    //    break;
                     case "cl":
                         await CheckpointListAsync(ct);
                         break;
                     case "cs":
                         await CheckpointSetAsync(ct);
                         break;
+                    case "p":
+                        await PingAsync(ct);
+                        break;
                     case "q":
                         quit = true;
                         break;
                 }
             }
+        }
+        async Task PingAsync(CancellationToken ct)
+        {
+            var sw = Stopwatch.StartNew();
+            var ping = bridge.EnqueueCommand(new PingCommand());
+            var response = await ping.Response;
+            AnsiConsole.MarkupLine($"Ping response: {response.ErrorCode} in {sw.ElapsedMilliseconds:#,##0}ms");
         }
         async Task CheckpointSetAsync(CancellationToken ct)
         {
@@ -113,14 +126,15 @@ namespace ModernVICEPDBMonitor.Playground
                 index++;
             }
         }
-        async Task ViceInfoAsync(CancellationToken ct)
-        {
-            var command = new InfoCommand();
-            bridge.EnqueueCommand(command);
-            var response = await command.Response;
-            AnsiConsole.MarkupLine($"VICE version RC number is [bold]{response.VersionRCNumber}[/]");
+        // not yet implemented in VICE stable
+        //async Task ViceInfoAsync(CancellationToken ct)
+        //{
+        //    var command = new InfoCommand();
+        //    bridge.EnqueueCommand(command);
+        //    var response = await command.Response;
+        //    AnsiConsole.MarkupLine($"VICE version RC number is [bold]{response.VersionRCNumber}[/]");
 
-        }
+        //}
         async Task GetDisplayAsync(CancellationToken ct)
         {
             var command = new DisplayGetCommand(UseVic: true, ImageFormat.Rgb);

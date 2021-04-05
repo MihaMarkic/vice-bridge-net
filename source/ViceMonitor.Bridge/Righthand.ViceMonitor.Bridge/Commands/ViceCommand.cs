@@ -57,7 +57,10 @@ namespace Righthand.ViceMonitor.Bridge.Commands
             BitConverter.TryWriteBytes(bufferSpan.Slice(2,4), commandLength);
             BitConverter.TryWriteBytes(bufferSpan.Slice(6, 4), requestId);
             bufferSpan[10] = (byte)CommandType;
-            WriteContent(bufferSpan[11..]);
+            if (contentLength > 0)
+            {
+                WriteContent(bufferSpan[11..]);
+            }
             return (buffer, totalLength);
         }
         /// <inheritdoc cref="IViceCommand.ApiVersion"/>

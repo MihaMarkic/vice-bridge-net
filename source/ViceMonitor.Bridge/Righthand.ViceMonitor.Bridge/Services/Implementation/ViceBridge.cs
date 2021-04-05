@@ -218,13 +218,21 @@ namespace Righthand.ViceMonitor.Bridge.Services.Implementation
                 await ReadByteArrayAsync(socket, headerBuffer, ct).ConfigureAwait(false);
                 uint responseBodyLength = responseBuilder.GetResponseBodyLength(headerBuffer.Data.AsSpan());
                 logger.LogDebug($"Response body length is {responseBodyLength:#,##0}B");
-                using (var bodyBuffer = byteArrayPool.GetBuffer(responseBodyLength))
+                (ViceResponse Response, uint RequestId) result;
+                if (responseBodyLength > 0)
                 {
-                    await ReadByteArrayAsync(socket, bodyBuffer, ct);
-                    var result = responseBuilder.Build(headerBuffer.Data.AsSpan(), bodyBuffer.Data.AsSpan());
-                    logger.LogDebug($"Response is {result.Response?.GetType().Name} with RequestId {result.RequestId}");
-                    return result;
+                    using (var bodyBuffer = byteArrayPool.GetBuffer(responseBodyLength))
+                    {
+                        await ReadByteArrayAsync(socket, bodyBuffer, ct);
+                        result = responseBuilder.Build(headerBuffer.Data.AsSpan(), bodyBuffer.Data.AsSpan());
+                    }
                 }
+                else
+                {
+                    result = responseBuilder.Build(headerBuffer.Data.AsSpan(), Array.Empty<byte>());
+                }
+                logger.LogDebug($"Response is {result.Response?.GetType().Name} with RequestId {result.RequestId}");
+                return result;
             }
         }
         async Task SendCommandAsync(Socket socket, uint requestId, IViceCommand command, CancellationToken ct)
