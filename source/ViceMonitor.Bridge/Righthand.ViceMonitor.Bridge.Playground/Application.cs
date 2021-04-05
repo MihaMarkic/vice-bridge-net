@@ -5,6 +5,7 @@ using Righthand.ViceMonitor.Bridge.Commands;
 using Righthand.ViceMonitor.Bridge.Services.Abstract;
 using Spectre.Console;
 using System;
+using System.Collections.Immutable;
 using System.IO;
 using System.Net;
 using System.Threading;
@@ -31,14 +32,17 @@ namespace ModernVICEPDBMonitor.Playground
                 //var checkPointCommand = new CheckpointSetCommand(0xfce2, 0xfce3,
                 //    StopWhenHit: true, Enabled: true, CpuOperation.Exec, Temporary: true);
                 //bridge.EnqueCommand(checkPointCommand);
-                bridge.Start(IPAddress.Loopback);
+                bridge.Start();
                 bridge.ConnectedChanged += Bridge_ConnectedChanged;
-                await GetDisplayAsync(ct);
-                AnsiConsole.MarkupLine("Waiting for command response");
-                AnsiConsole.WriteLine("Press ENTER to end");
-                Console.ReadLine();
-                await bridge.DisposeAsync();
-                AnsiConsole.WriteLine("Main loop was canceled");
+                try
+                {
+                    await ShowMenuAsync(ct);
+                }
+                finally
+                {
+                    await bridge.DisposeAsync();
+                    AnsiConsole.WriteLine("Main loop was canceled");
+                }
             }
             catch (OperationCanceledException)
             {
@@ -52,25 +56,74 @@ namespace ModernVICEPDBMonitor.Playground
             Console.WriteLine("App stopped");
         }
 
+        async Task ShowMenuAsync(CancellationToken ct)
+        {
+            var options = ImmutableDictionary<string, string>.Empty
+                .Add("dg", "Display get")
+                .Add("vi", "VICE info");
+            bool quit = false;
+            while (!quit)
+            {
+                foreach (var pair in options)
+                {
+                    AnsiConsole.MarkupLine($"[bold]{pair.Key}[/]  ... {pair.Value}");
+                }
+                AnsiConsole.WriteLine("Type [bold]q[/] to end");
+                string? command = Console.ReadLine();
+                switch (command)
+                {
+                    case "dg":
+                        await GetDisplayAsync(ct);
+                        break;
+                    case "vi":
+                        await ViceInfoAsync(ct);
+                        break;
+                    case "q":
+                        quit = true;
+                        break;
+                }
+            }
+        }
+        async Task ViceInfoAsync(CancellationToken ct)
+        {
+            var command = new InfoCommand();
+            bridge.EnqueueCommand(command);
+            var response = await command.Result;
+            AnsiConsole.MarkupLine($"VICE version RC number is [bold]{response.VersionRCNumber}[/]");
+
+        }
         async Task GetDisplayAsync(CancellationToken ct)
         {
-            var displayGetCommand = new DisplayGetCommand(UseVic: true, ImageFormat.Rgb);
-                bridge.EnqueCommand(displayGetCommand);
-            var response = await displayGetCommand.Result;
-            AnsiConsole.MarkupLine($"Got response [bold]{response.GetType().Name}[/]");
-            var image = response.Image.Value;
-            AnsiConsole.MarkupLine($"Image size is [bold]{response.InnerWidth}[/]x[bold]{response.InnerHeight}[/]");
-            string tempFileName = Path.Combine(Path.GetTempPath(), "test.raw");
-            using (var stream = File.OpenWrite(tempFileName))
+            var command = new DisplayGetCommand(UseVic: true, ImageFormat.Rgb);
+            bridge.EnqueueCommand(command);
+            var response = await command.Result;
+            try
             {
-                stream.Write(image.Data, 0, (int)image.Size);
-                await stream.FlushAsync();
+                AnsiConsole.MarkupLine($"Got response [bold]{response.GetType().Name}[/]");
+                if (response.Image is not null)
+                {
+                    var image = response.Image.Value;
+                    AnsiConsole.MarkupLine($"Image size is [bold]{response.InnerWidth}[/]x[bold]{response.InnerHeight}[/]");
+                    string tempFileName = Path.Combine(Path.GetTempPath(), "test.raw");
+                    using (var stream = File.OpenWrite(tempFileName))
+                    {
+                        stream.Write(image.Data, 0, (int)image.Size);
+                        await stream.FlushAsync(ct);
+                    }
+                    AnsiConsole.MarkupLine($"Image written to [bold]{tempFileName}[/]");
+                }
+                else
+                {
+                    AnsiConsole.MarkupLine("Response does not contain image data");
+                }
             }
-            response.Dispose();
-            AnsiConsole.MarkupLine($"Image written to [bold]{tempFileName}[/]");
+            finally
+            {
+                response.Dispose();
+            }
         }
 
-        void Bridge_ConnectedChanged(object sender, ConnectedChangedEventArgs e)
+        void Bridge_ConnectedChanged(object? sender, ConnectedChangedEventArgs e)
         {
             UpdateConnectedState();
         }

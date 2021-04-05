@@ -39,7 +39,7 @@ namespace Righthand.ViceMonitor.Bridge
         /// <summary>
         /// An empty buffer.
         /// </summary>
-        public static readonly ManagedBuffer Empty = new ManagedBuffer(0);
+        public static readonly ManagedBuffer Empty = new (0);
         /// <summary>
         /// Byte array of minimal size of <see cref="Size"/>.
         /// </summary>
@@ -53,7 +53,7 @@ namespace Righthand.ViceMonitor.Bridge
         ManagedBuffer(uint size)
         {
             pool = null;
-            Data = new byte[0];
+            Data = Array.Empty<byte>();
             Size = 0;
         }
         internal ManagedBuffer(ArrayPool<byte> pool, byte[] data, uint size)

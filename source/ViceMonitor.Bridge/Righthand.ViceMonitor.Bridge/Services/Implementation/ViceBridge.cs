@@ -14,6 +14,10 @@ using Righthand.ViceMonitor.Bridge.Services.Abstract;
 
 namespace Righthand.ViceMonitor.Bridge.Services.Implementation
 {
+    /// <summary>
+    /// Bridge that allows communication with VICE running on the same machine.
+    /// </summary>
+    /// <remarks>In future connection to remote machines will be enabled.</remarks>
     public sealed class ViceBridge: IViceBridge
     {
         readonly ILogger<ViceBridge> logger;
@@ -23,15 +27,20 @@ namespace Righthand.ViceMonitor.Bridge.Services.Implementation
         TaskCompletionSource? tcs;
         uint currentRequestId = 0;
         readonly ArrayPool<byte> byteArrayPool = ArrayPool<byte>.Shared;
-        readonly ConcurrentQueue<IViceCommand> commands = new ConcurrentQueue<IViceCommand>();
+        readonly ConcurrentQueue<IViceCommand> commands = new ();
+        /// <inheritdoc />
         public Task? RunnerTask => tcs?.Task;
-        /// <summary>
-        /// Triggers on all unbound responses.
-        /// </summary>
-        /// <threadsafety>Runs on any thread</threadsafety>
+        /// <inheritdoc />
         public event EventHandler<ViceResponseEventArgs>? ViceResponse;
+        /// <inheritdoc />
         public event EventHandler<ConnectedChangedEventArgs>? ConnectedChanged;
+        /// <inheritdoc />
         public bool IsConnected { get; private set; }
+        /// <summary>
+        /// Creates an instance of <see cref="ViceBridge"/>.
+        /// </summary>
+        /// <param name="logger"></param>
+        /// <param name="responseBuilder">Type responsible for building response types.</param>
         public ViceBridge(ILogger<ViceBridge> logger, ResponseBuilder responseBuilder)
         {
             this.logger = logger;
@@ -39,7 +48,7 @@ namespace Righthand.ViceMonitor.Bridge.Services.Implementation
         }
         void OnViceResponse(ViceResponseEventArgs e) => ViceResponse?.Invoke(this, e);
         void OnConnectedChanged(ConnectedChangedEventArgs e) => ConnectedChanged?.Invoke(this, e);
-        async Task WaitForPort(int port, CancellationToken ct = default)
+        static async Task WaitForPort(int port, CancellationToken ct = default)
         {
             bool isAvailable;
             do
@@ -55,8 +64,10 @@ namespace Righthand.ViceMonitor.Bridge.Services.Implementation
                 }
             } while (!isAvailable);
         }
+        /// <inheritdoc />
         public bool IsRunning => cts is not null && loop is not null;
-        public void Start(IPAddress address, int port = 6502)
+        /// <inheritdoc />
+        public void Start(int port = 6502)
         {
             if (!IsRunning)
             {
@@ -64,7 +75,7 @@ namespace Righthand.ViceMonitor.Bridge.Services.Implementation
                 tcs = new TaskCompletionSource();
                 cts = new CancellationTokenSource();
                 var task = Task.Factory.StartNew(
-                    () => StartAsync(address, port, cts.Token), 
+                    () => StartAsync(port, cts.Token), 
                     cancellationToken: cts.Token, 
                     creationOptions: TaskCreationOptions.LongRunning,
                     scheduler: TaskScheduler.Default);
@@ -76,7 +87,7 @@ namespace Righthand.ViceMonitor.Bridge.Services.Implementation
             }
 
         }
-        async Task StartAsync(IPAddress address, int port, CancellationToken ct)
+        async Task StartAsync(int port, CancellationToken ct)
         {
             var socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
             try
@@ -107,7 +118,7 @@ namespace Righthand.ViceMonitor.Bridge.Services.Implementation
                     }
                     catch (Exception ex)
                     {
-                        logger.LogError(ex, "Unknown exception occured");
+                        logger.LogError(ex, "Unknown exception occurred");
                     }
                     finally
                     {
@@ -146,7 +157,8 @@ namespace Righthand.ViceMonitor.Bridge.Services.Implementation
                 }
             }
         }
-        public void EnqueCommand(IViceCommand command)
+        /// <inheritdoc />
+        public void EnqueueCommand(IViceCommand command)
         {
             commands.Enqueue(command);
         }
@@ -159,6 +171,7 @@ namespace Righthand.ViceMonitor.Bridge.Services.Implementation
                 {
                     logger.LogDebug($"Will process command {currentRequestId} of {command.GetType().Name}");
                     await SendCommandAsync(socket, currentRequestId, command, ct).ConfigureAwait(false);
+                    (command as IDisposable)?.Dispose();
                     var response = await WaitUntilMatchesResponseAsync(socket, currentRequestId, ct).ConfigureAwait(false);
                     logger.LogDebug($"Command {currentRequestId} of {command.GetType().Name} got response with result {response.ErrorCode}");
                     command.SetResult(response);
@@ -167,7 +180,7 @@ namespace Righthand.ViceMonitor.Bridge.Services.Implementation
                 if (socket.Available > 0)
                 {
                     logger.LogDebug("Will process unbound response");
-                    (var response, var requestId) = await GetResponseAsync(socket, ct).ConfigureAwait(false);
+                    (var response, _) = await GetResponseAsync(socket, ct).ConfigureAwait(false);
                     OnViceResponse(new ViceResponseEventArgs(response));
                 }
             }
@@ -210,17 +223,17 @@ namespace Righthand.ViceMonitor.Bridge.Services.Implementation
                 buffer.Dispose();
             }
         }
-        async Task ReadByteArrayAsync(Socket socket, ManagedBuffer buffer, CancellationToken ct = default)
+        static async Task ReadByteArrayAsync(Socket socket, ManagedBuffer buffer, CancellationToken ct = default)
         {
             int i = 0;
             var dataSpan = buffer.Data.AsMemory();
             do
             {
-                i += await socket.ReceiveAsync(dataSpan[i..(int)buffer.Size], SocketFlags.None).ConfigureAwait(false);
+                i += await socket.ReceiveAsync(dataSpan[i..(int)buffer.Size], SocketFlags.None, ct).ConfigureAwait(false);
             }
             while (i < buffer.Size);
         }
-        async Task SendByteArrayAsync(Socket socket, byte[] data, int length, CancellationToken ct)
+        static async Task SendByteArrayAsync(Socket socket, byte[] data, int length, CancellationToken ct)
         {
             int i = 0;
             var dataSpan = data.AsMemory();
@@ -239,7 +252,9 @@ namespace Righthand.ViceMonitor.Bridge.Services.Implementation
             }
             while (i < length);
         }
-
+        /// <summary>
+        /// Asynchronously releases all resources used by the <see cref="ViceBridge"/>.
+        /// </summary>
         public async ValueTask DisposeAsync()
         {
             if (cts is not null && loop is not null)
@@ -261,7 +276,9 @@ namespace Righthand.ViceMonitor.Bridge.Services.Implementation
                 logger.LogDebug("Nothing to dispose async");
             }
         }
-
+        /// <summary>
+        /// Releases all resources used by the <see cref="ViceBridge"/>.
+        /// </summary>
         public void Dispose()
         {
             logger.LogDebug("Dispose");

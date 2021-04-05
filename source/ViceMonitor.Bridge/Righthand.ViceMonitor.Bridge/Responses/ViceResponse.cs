@@ -21,7 +21,7 @@ namespace Righthand.ViceMonitor.Bridge.Responses
     public record MemoryGetResponse(byte ApiVersion, ErrorCode ErrorCode, ManagedBuffer? Memory) : ViceResponse(ApiVersion, ErrorCode), IDisposable
     {
         /// <summary>
-        /// Disposes the instance.
+        /// Releases all resources used by the <see cref="MemoryGetResponse"/>.
         /// </summary>
         public void Dispose()
         {
@@ -140,7 +140,7 @@ namespace Righthand.ViceMonitor.Bridge.Responses
         : ViceResponse(ApiVersion, ErrorCode), IDisposable
     {
         /// <summary>
-        /// Disposed the object.
+        /// Releases all resources used by the <see cref="DisplayGetResponse"/>.
         /// </summary>
         public void Dispose()
         {

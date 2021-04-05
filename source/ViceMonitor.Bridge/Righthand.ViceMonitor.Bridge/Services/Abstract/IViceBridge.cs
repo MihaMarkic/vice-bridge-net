@@ -2,17 +2,46 @@
 using System.Net;
 using System.Threading.Tasks;
 using Righthand.ViceMonitor.Bridge.Commands;
+using Righthand.ViceMonitor.Bridge.Services.Implementation;
 
 namespace Righthand.ViceMonitor.Bridge.Services.Abstract
 {
+    /// <summary>
+    /// Interface to access <see cref="ViceBridge"/>
+    /// </summary>
     public interface IViceBridge: IAsyncDisposable, IDisposable
     {
+        /// <summary>
+        /// Task where loop is running.
+        /// </summary>
         Task? RunnerTask { get; }
+        /// <summary>
+        /// Gets running status.
+        /// </summary>
         bool IsRunning { get; }
+        /// <summary>
+        /// Gets connection to VICE status.
+        /// </summary>
         bool IsConnected { get; }
-        void Start(IPAddress address, int port = 6502);
-        void EnqueCommand(IViceCommand command);
+        /// <summary>
+        /// Starts the bridge.
+        /// </summary>
+        /// <param name="port">Port of the binary monitor. 6502 by default.</param>
+        void Start(int port = 6502);
+        /// <summary>
+        /// Enqueues command for sending
+        /// </summary>
+        /// <param name="command">An instance of <see cref="ViceCommand{TResponse}"/> subtype to enqueue.</param>
+        void EnqueueCommand(IViceCommand command);
+        /// <summary>
+        /// Occurs when an unbound event arrived.
+        /// </summary>
+        /// <threadsafety>Can occur on any thread.</threadsafety>
         event EventHandler<ViceResponseEventArgs>? ViceResponse;
+        /// <summary>
+        /// Occurs when connection status to VICE changes.
+        /// </summary>
+        /// <threadsafety>Can occur on any thread.</threadsafety>
         event EventHandler<ConnectedChangedEventArgs>? ConnectedChanged;
     }
 }
