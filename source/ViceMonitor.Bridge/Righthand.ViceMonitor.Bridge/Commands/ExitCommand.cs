@@ -1,4 +1,6 @@
-﻿namespace Righthand.ViceMonitor.Bridge.Commands
+﻿using Righthand.ViceMonitor.Bridge.Responses;
+
+namespace Righthand.ViceMonitor.Bridge.Commands
 {
     /// <summary>
     /// Exit the monitor until the next breakpoint. 

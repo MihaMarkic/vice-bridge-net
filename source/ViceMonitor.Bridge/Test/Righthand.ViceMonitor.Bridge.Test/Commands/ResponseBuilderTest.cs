@@ -1,6 +1,7 @@
 ﻿using System;
 using NUnit.Framework;
 using Righthand.ViceMonitor.Bridge.Commands;
+using Righthand.ViceMonitor.Bridge.Responses;
 
 namespace Righthand.ViceMonitor.Bridge.Test.Commands
 {

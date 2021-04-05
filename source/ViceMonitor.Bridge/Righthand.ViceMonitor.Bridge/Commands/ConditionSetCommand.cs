@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Righthand.ViceMonitor.Bridge.Responses;
+using System;
 using System.Text;
 
 namespace Righthand.ViceMonitor.Bridge.Commands

@@ -1,12 +1,22 @@
-﻿using System;
-using Righthand.ViceMonitor.Bridge.Commands;
+﻿using Righthand.ViceMonitor.Bridge.Responses;
+using System;
 
 namespace Righthand.ViceMonitor.Bridge
 {
+    /// <summary>
+    /// Occurs when unbound response is pulled.
+    /// </summary>
     public class ViceResponseEventArgs: EventArgs
     {
-        ViceResponse Response { get; }
-        public ViceResponseEventArgs(ViceResponse response)
+        /// <summary>
+        /// The response that is unbound to any command.
+        /// </summary>
+        public ViceResponse Response { get; }
+        /// <summary>
+        /// Initializes an instance of <see cref="ViceResponseEventArgs"/>.
+        /// </summary>
+        /// <param name="response"></param>
+        internal ViceResponseEventArgs(ViceResponse response)
         {
             Response = response;
         }

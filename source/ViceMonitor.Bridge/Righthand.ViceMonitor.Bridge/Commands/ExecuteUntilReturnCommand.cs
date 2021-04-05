@@ -1,4 +1,6 @@
-﻿namespace Righthand.ViceMonitor.Bridge.Commands
+﻿using Righthand.ViceMonitor.Bridge.Responses;
+
+namespace Righthand.ViceMonitor.Bridge.Commands
 {
     /// <summary>
     /// Continues execution and returns to the monitor just after the next RTS or RTI is executed.

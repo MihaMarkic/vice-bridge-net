@@ -9,6 +9,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Righthand.ViceMonitor.Bridge.Commands;
+using Righthand.ViceMonitor.Bridge.Responses;
 using Righthand.ViceMonitor.Bridge.Services.Abstract;
 
 namespace Righthand.ViceMonitor.Bridge.Services.Implementation
