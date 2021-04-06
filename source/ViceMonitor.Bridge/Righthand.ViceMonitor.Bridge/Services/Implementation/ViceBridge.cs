@@ -3,7 +3,6 @@ using System.Buffers;
 using System.Collections.Concurrent;
 using System.Collections.Immutable;
 using System.Linq;
-using System.Net;
 using System.Net.NetworkInformation;
 using System.Net.Sockets;
 using System.Threading;
@@ -19,8 +18,10 @@ namespace Righthand.ViceMonitor.Bridge.Services.Implementation
     /// Bridge that allows communication with VICE running on the same machine.
     /// </summary>
     /// <remarks>In future connection to remote machines will be enabled.</remarks>
+    /// <threadsafety>Class members are not thread safe unless explicitly stated.</threadsafety>
     public sealed class ViceBridge: IViceBridge
     {
+        readonly object sync = new object();
         readonly ILogger<ViceBridge> logger;
         readonly ResponseBuilder responseBuilder;
         CancellationTokenSource? cts;
@@ -29,14 +30,14 @@ namespace Righthand.ViceMonitor.Bridge.Services.Implementation
         uint currentRequestId = 0;
         readonly ArrayPool<byte> byteArrayPool = ArrayPool<byte>.Shared;
         readonly ConcurrentQueue<IViceCommand> commands = new ();
+        bool isConnected;
+        bool isRunning;
         /// <inheritdoc />
         public Task? RunnerTask => tcs?.Task;
         /// <inheritdoc />
         public event EventHandler<ViceResponseEventArgs>? ViceResponse;
         /// <inheritdoc />
         public event EventHandler<ConnectedChangedEventArgs>? ConnectedChanged;
-        /// <inheritdoc />
-        public bool IsConnected { get; private set; }
         /// <summary>
         /// Creates an instance of <see cref="ViceBridge"/>.
         /// </summary>
@@ -46,6 +47,13 @@ namespace Righthand.ViceMonitor.Bridge.Services.Implementation
         {
             this.logger = logger;
             this.responseBuilder = responseBuilder;
+        }
+        /// <inheritdoc />
+        /// <threadsafety>Property is thread safe.</threadsafety>
+        public bool IsConnected 
+        { 
+            get { lock (sync) { return isConnected; } }
+            private set { lock (sync) { isConnected = value; } }
         }
         void OnViceResponse(ViceResponseEventArgs e) => ViceResponse?.Invoke(this, e);
         void OnConnectedChanged(ConnectedChangedEventArgs e) => ConnectedChanged?.Invoke(this, e);
@@ -66,7 +74,12 @@ namespace Righthand.ViceMonitor.Bridge.Services.Implementation
             } while (!isAvailable);
         }
         /// <inheritdoc />
-        public bool IsRunning => cts is not null && loop is not null;
+        /// <threadsafety>Property is thread safe.</threadsafety>
+        public bool IsRunning
+        {
+            get { lock (sync) { return isRunning; } }
+            private set { lock (sync) { isRunning = value; } }
+        }
         /// <inheritdoc />
         public void Start(int port = 6502)
         {
@@ -84,7 +97,7 @@ namespace Righthand.ViceMonitor.Bridge.Services.Implementation
             }
             else
             {
-                logger.LogInformation("Already running");
+                logger.LogWarning("Already running");
             }
 
         }
@@ -105,8 +118,14 @@ namespace Righthand.ViceMonitor.Bridge.Services.Implementation
                         logger.LogDebug("Port connected");
                         while (socket.Connected)
                         {
-                            IsConnected = true;
-                            OnConnectedChanged(new ConnectedChangedEventArgs(true));
+                            lock (sync)
+                            {
+                                if (!isConnected)
+                                {
+                                    isConnected = true;
+                                    OnConnectedChanged(new ConnectedChangedEventArgs(true));
+                                }
+                            }
                             await LoopAsync(socket, ct);
                             await Task.Delay(500, ct).ConfigureAwait(false);
                         }
@@ -159,6 +178,7 @@ namespace Righthand.ViceMonitor.Bridge.Services.Implementation
             }
         }
         /// <inheritdoc />
+        /// <threadsafety>Method is thread safe.</threadsafety>
         public T EnqueueCommand<T>(T command)
             where T: IViceCommand
         {
@@ -167,41 +187,49 @@ namespace Righthand.ViceMonitor.Bridge.Services.Implementation
         }
         async Task LoopAsync(Socket socket, CancellationToken ct)
         {
-            while (true)
+            isRunning = true;
+            try
             {
-                ct.ThrowIfCancellationRequested();
-                while (commands.TryDequeue(out var command))
+                while (true)
                 {
-                    logger.LogDebug($"Will process command {currentRequestId} of {command.GetType().Name} with request id {currentRequestId}");
-                    await SendCommandAsync(socket, currentRequestId, command, ct).ConfigureAwait(false);
-                    (command as IDisposable)?.Dispose();
-                    ViceResponse response;
-                    switch (command)
+                    ct.ThrowIfCancellationRequested();
+                    while (commands.TryDequeue(out var command))
                     {
-                        // list is a special case that collects matching CheckpointInfoResponses
-                        case CheckpointListCommand listCommand:
-                            var info = ImmutableArray<CheckpointInfoResponse>.Empty;
-                            while ((response = await WaitUntilMatchesResponseAsync(socket, currentRequestId, ct).ConfigureAwait(false)) is CheckpointInfoResponse infoResponse)
-                            {
-                                info = info.Add(infoResponse);
-                            }
-                            var listResponse = (CheckpointListResponse)response;
-                            response = listResponse with { Info = info };
-                            break;
-                        default:
-                            response = await WaitUntilMatchesResponseAsync(socket, currentRequestId, ct).ConfigureAwait(false);
-                            logger.LogDebug($"Command {currentRequestId} of {command.GetType().Name} got response with result {response.ErrorCode}");
-                            break;
+                        logger.LogDebug($"Will process command {currentRequestId} of {command.GetType().Name} with request id {currentRequestId}");
+                        await SendCommandAsync(socket, currentRequestId, command, ct).ConfigureAwait(false);
+                        (command as IDisposable)?.Dispose();
+                        ViceResponse response;
+                        switch (command)
+                        {
+                            // list is a special case that collects matching CheckpointInfoResponses
+                            case CheckpointListCommand listCommand:
+                                var info = ImmutableArray<CheckpointInfoResponse>.Empty;
+                                while ((response = await WaitUntilMatchesResponseAsync(socket, currentRequestId, ct).ConfigureAwait(false)) is CheckpointInfoResponse infoResponse)
+                                {
+                                    info = info.Add(infoResponse);
+                                }
+                                var listResponse = (CheckpointListResponse)response;
+                                response = listResponse with { Info = info };
+                                break;
+                            default:
+                                response = await WaitUntilMatchesResponseAsync(socket, currentRequestId, ct).ConfigureAwait(false);
+                                logger.LogDebug($"Command {currentRequestId} of {command.GetType().Name} got response with result {response.ErrorCode}");
+                                break;
+                        }
+                        command.SetResult(response);
+                        currentRequestId++;
                     }
-                    command.SetResult(response);
-                    currentRequestId++;
+                    if (socket.Available > 0)
+                    {
+                        logger.LogDebug("Will process unbound response");
+                        (var response, _) = await GetResponseAsync(socket, ct).ConfigureAwait(false);
+                        OnViceResponse(new ViceResponseEventArgs(response));
+                    }
                 }
-                if (socket.Available > 0)
-                {
-                    logger.LogDebug("Will process unbound response");
-                    (var response, _) = await GetResponseAsync(socket, ct).ConfigureAwait(false);
-                    OnViceResponse(new ViceResponseEventArgs(response));
-                }
+            }
+            finally
+            {
+                IsRunning = false;
             }
         }
 
@@ -295,8 +323,11 @@ namespace Righthand.ViceMonitor.Bridge.Services.Implementation
                 catch (OperationCanceledException)
                 { }
                 logger.LogDebug("Disposed async");
-                cts = null;
-                loop = null;
+                lock (sync)
+                {
+                    cts = null;
+                    loop = null;
+                }
             }
             else
             {

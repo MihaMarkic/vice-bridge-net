@@ -6,6 +6,7 @@ namespace Righthand.ViceMonitor.Bridge
     /// <summary>
     /// Manages byte array buffers from pool.
     /// </summary>
+    /// <threadsafe>Class is thread safe.</threadsafe>
     public static class BufferManager
     {
         /// <summary>
