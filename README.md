@@ -29,6 +29,28 @@ var ping = bridge.EnqueueCommand(new PingCommand());
 var response = await ping.Response;
 ```
 
+## A bit more about internal working
+
+Library is using .NET's `Microsoft.Extensions.DependencyInjection` IoC system and is mandatory to initialize it before starting `ViceBridge`.
+
+Client typically creates immutable commands and enqueues them into bridge. ViceBridge will process them in FIFO manner. Once commands are sent to VICE, bridge matches response (or in some case responses) to issued command. When client wants to read VICE's response or just waits for it, it can await `ViceCommand.Response` task.
+
+Commands are using `Righthand.ViceMonitor.Bridge.Commands` namespace and are modelled to match VICE's binary protocol with few enhancements where available. For example, there is no need for `FileNameIndex` as it can be read from `FileName` string property.
+
+Internally byte arrays for input and output are retrieved from `ArrayPool<byte>.Shared` through custom `BufferManager` class which packs the arrays into `ManagedBuffer` class. Some properties exposes said `ManagedBuffer`. Read Memory Management chapter below to avoid memory leaks.
+
+The responses that are not bound to any command are accessible through `IViceBridge.ViceResponse` event. Responses are using `Righthand.ViceMonitor.Bridge.Responses` namespace.
+
+## Memory management
+
+Caller is required to dispose responses that implement `IDisposable` after all data has been processed. Usually those responses have at least one property of `ManagedBuffer` type which is borrowing byte array from a shared pool. Failing to call `Dispose()` on response will result in memory leak.
+
+At the moment of this writing there are only two such responses: `MemoryGetResponse` and `DisplayGetResponse`.
+
+When a `ManagedBuffer` instance is passed to a command then `ViceBridge` will dispose the command and consequently the given `ManagedBuffer`. Once command in enqueued the caller shouldn't modify passed `ManagedBuffer` anymore as there are no guarantees when it is being disposed.
+
+At the moment of this writing there is only one such command: `MemorySetCommand`.
+
 ## Playground sample
 
-Playground sample is a console application that is used for testing and for sample purposes.
+Playground sample is a console application that is used for testing and for sample purposes. It demonstrates the basics and some simple tasks.
