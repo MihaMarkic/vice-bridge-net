@@ -81,10 +81,10 @@
         /// MON_RESPONSE_DISPLAY_GET
         /// </summary>
         DisplayGet                          = 0x84,
-        /// <summary>
-        /// MON_RESPONSE_INFO
-        /// </summary>
-        Info                                = 0x85,
+        ///// <summary>
+        ///// MON_RESPONSE_INFO
+        ///// </summary>
+        //Info                                = 0x85,
         /// <summary>
         /// MON_RESPONSE_EXIT
         /// </summary>

@@ -62,7 +62,7 @@ namespace Righthand.ViceMonitor.Bridge.Responses
                 ResponseType.BanksAvailable     => BuildBanksAvailableResponse(apiVersion, errorCode, buffer),
                 ResponseType.RegistersAvailable => BuildRegistersAvailableResponse(apiVersion, errorCode, buffer),
                 ResponseType.DisplayGet         => BuildDisplayGetResponse(apiVersion, errorCode, buffer),
-                ResponseType.Info               => BuildInfoResponse(apiVersion, errorCode, buffer),
+                //ResponseType.Info               => BuildInfoResponse(apiVersion, errorCode, buffer),
                 ResponseType.Exit               => BuildEmptyResponse(apiVersion, errorCode),
                 ResponseType.Quit               => BuildEmptyResponse(apiVersion, errorCode),
                 ResponseType.Reset              => BuildEmptyResponse(apiVersion, errorCode),
@@ -277,17 +277,17 @@ namespace Righthand.ViceMonitor.Bridge.Responses
                 return new DisplayGetResponse(apiVersion, errorCode, default, default, default, default, default, default, ManagedBuffer.Empty);
             }
         }
-        internal InfoResponse BuildInfoResponse(byte apiVersion, ErrorCode errorCode, ReadOnlySpan<byte> buffer)
-        {
-            if (errorCode == ErrorCode.OK)
-            {
-                return new InfoResponse(apiVersion, errorCode, VersionRCNumber: buffer[1]);
-            }
-            else
-            {
-                return new InfoResponse(apiVersion, errorCode, VersionRCNumber: default);
-            }
-        }
+        //internal InfoResponse BuildInfoResponse(byte apiVersion, ErrorCode errorCode, ReadOnlySpan<byte> buffer)
+        //{
+        //    if (errorCode == ErrorCode.OK)
+        //    {
+        //        return new InfoResponse(apiVersion, errorCode, VersionRCNumber: buffer[1]);
+        //    }
+        //    else
+        //    {
+        //        return new InfoResponse(apiVersion, errorCode, VersionRCNumber: default);
+        //    }
+        //}
         internal EmptyViceResponse BuildEmptyResponse(byte apiVersion, ErrorCode errorCode) => new(apiVersion, errorCode);
     }
 }

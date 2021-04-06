@@ -55,7 +55,7 @@ namespace Righthand.ViceMonitor.Bridge.Responses
     /// <param name="ApiVersion"><inheritdoc /></param>
     /// <param name="ErrorCode"><inheritdoc /></param>
     /// <param name="TotalNumberOfCheckpoints"></param>
-    /// <param name="Info">An array of matching <see cref="CheckpointInfoResponse"/>.</param>
+    /// <param name="Info">An array of matching <see cref="Righthand.ViceMonitor.Bridge.Responses.CheckpointInfoResponse"/>.</param>
     public record CheckpointListResponse(byte ApiVersion, ErrorCode ErrorCode, uint TotalNumberOfCheckpoints, ImmutableArray<CheckpointInfoResponse> Info) : ViceResponse(ApiVersion, ErrorCode);
 
     /// <summary>
@@ -148,13 +148,13 @@ namespace Righthand.ViceMonitor.Bridge.Responses
             Image?.Dispose();
         }
     }
-    /// <summary>
-    /// Response to <see cref="Righthand.ViceMonitor.Bridge.Commands.InfoCommand"/>.
-    /// </summary>
-    /// <param name="ApiVersion"><inheritdoc /></param>
-    /// <param name="ErrorCode"><inheritdoc /></param>
-    /// <param name="VersionRCNumber">Version RC number.</param>
-    public record InfoResponse(byte ApiVersion, ErrorCode ErrorCode, byte VersionRCNumber) : ViceResponse(ApiVersion, ErrorCode);
+    ///// <summary>
+    ///// Response to <see cref="Righthand.ViceMonitor.Bridge.Commands.InfoCommand"/>.
+    ///// </summary>
+    ///// <param name="ApiVersion"><inheritdoc /></param>
+    ///// <param name="ErrorCode"><inheritdoc /></param>
+    ///// <param name="VersionRCNumber">Version RC number.</param>
+    //public record InfoResponse(byte ApiVersion, ErrorCode ErrorCode, byte VersionRCNumber) : ViceResponse(ApiVersion, ErrorCode);
 
     /// <summary>
     /// Empty response.
