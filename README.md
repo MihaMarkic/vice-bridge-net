@@ -1,8 +1,8 @@
 # VICE Binary Monitor Bridge for .NET
 
-Implements a bridge for communication with [VICE](https://vice-emu.sourceforge.io/) [binary monitor](https://vice-emu.sourceforge.io/vice_13.html#SEC281) in .NET 5.
+A cross platform .NET 5 library that implements a bridge for communication with [VICE](https://vice-emu.sourceforge.io/) [binary monitor](https://vice-emu.sourceforge.io/vice_13.html#SEC281).
 
-Tested(limited) and build against VICE 3.5.
+Tested(limited on Windows 10) and built against VICE 3.5.
 
 ## Quick start
 
