@@ -4,17 +4,19 @@ using System;
 namespace Righthand.ViceMonitor.Bridge.Commands
 {
     /// <summary>
-    /// Gets any type of checkpoint. (break, watch, trace)
+    /// Checkpoint toggle.
     /// </summary>
     /// <param name="CheckpointNumber"></param>
-    public record CheckpointGetCommand(uint CheckpointNumber) : ViceCommand<CheckpointInfoResponse>(CommandType.CheckpointGet)
+    /// <param name="Enabled"></param>
+    public record CheckpointToggleCommand(uint CheckpointNumber, bool Enabled) : ViceCommand<CheckpointInfoResponse>(CommandType.CheckpointToggle)
     {
         /// <inheritdoc />
-        public override uint ContentLength => sizeof(uint);
+        public override uint ContentLength => sizeof(uint) + sizeof(byte);
         /// <inheritdoc />
         public override void WriteContent(Span<byte> buffer)
         {
             BitConverter.TryWriteBytes(buffer, CheckpointNumber);
+            buffer[4] = Enabled.AsByte();
         }
     }
 }

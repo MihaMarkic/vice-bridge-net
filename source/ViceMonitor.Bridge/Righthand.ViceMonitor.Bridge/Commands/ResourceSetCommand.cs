@@ -1,10 +1,18 @@
-﻿using System;
+﻿using Righthand.ViceMonitor.Bridge.Responses;
+using Righthand.ViceMonitor.Bridge.Shared;
+using System;
 
 namespace Righthand.ViceMonitor.Bridge.Commands
 {
+    /// <summary>
+    /// Set a resource value in the emulator. See section 6.1 Format of resource files. 
+    /// </summary>
+    /// <param name="Resource"></param>
     public record ResourceSetCommand(Resource Resource) : ViceCommand<EmptyViceResponse>(CommandType.ResourceSet)
     {
+        /// <inheritdoc />
         public override uint ContentLength => Resource.Length;
+        /// <inheritdoc />
         public override void WriteContent(Span<byte> buffer)
         {
             switch (Resource)

@@ -2,20 +2,29 @@
 using System.Collections.Immutable;
 using System.Text;
 using Microsoft.Extensions.Logging;
+using Righthand.ViceMonitor.Bridge.Commands;
+using Righthand.ViceMonitor.Bridge.Shared;
 
-namespace Righthand.ViceMonitor.Bridge.Commands
+namespace Righthand.ViceMonitor.Bridge.Responses
 {
+    /// <summary>
+    /// Builds response objects from data arrays.
+    /// </summary>
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Performance", "CA1822:Mark members as static", Justification = "IoC")]
     public class ResponseBuilder
     {
         readonly ILogger<ResponseBuilder> logger;
+        /// <summary>
+        /// Creates an instance of <see cref="ResponseBuilder"/>.
+        /// </summary>
+        /// <param name="logger"></param>
         public ResponseBuilder(ILogger<ResponseBuilder> logger)
         {
             this.logger = logger;
         }
 
         internal uint GetResponseBodyLength(ReadOnlySpan<byte> header) => BitConverter.ToUInt32(header[2..]);
-        public (ViceResponse Response, uint RequestId) Build(ReadOnlySpan<byte> header, ReadOnlySpan<byte> buffer)
+        internal (ViceResponse Response, uint RequestId) Build(ReadOnlySpan<byte> header, ReadOnlySpan<byte> buffer)
         {
             byte stx = header[0]; // should be STX
             if (stx != Constants.STX)
@@ -36,8 +45,9 @@ namespace Righthand.ViceMonitor.Bridge.Commands
             {
                 ResponseType.MemoryGet          => BuildMemoryGetResponse(apiVersion, errorCode, buffer),
                 ResponseType.MemorySet          => BuildEmptyResponse(apiVersion, errorCode),
-                ResponseType.Checkpoint         => BuildCheckpointResponse(apiVersion, errorCode, buffer),
-                ResponseType.Registers          => BuildRegistersResponse(apiVersion, errorCode, buffer),
+                ResponseType.CheckpointInfo     => BuildCheckpointInfoResponse(apiVersion, errorCode, buffer),
+                ResponseType.CheckpointList     => BuildCheckpointListResponse(apiVersion, errorCode, buffer),
+                ResponseType.RegisterInfo          => BuildRegistersResponse(apiVersion, errorCode, buffer),
                 ResponseType.Dump               => BuildEmptyResponse(apiVersion, errorCode),
                 ResponseType.Undump             => BuildUndumpResponse(apiVersion, errorCode, buffer),
                 ResponseType.ResourceGet        => BuildResourceGetResponse(apiVersion, errorCode, buffer),
@@ -52,6 +62,7 @@ namespace Righthand.ViceMonitor.Bridge.Commands
                 ResponseType.BanksAvailable     => BuildBanksAvailableResponse(apiVersion, errorCode, buffer),
                 ResponseType.RegistersAvailable => BuildRegistersAvailableResponse(apiVersion, errorCode, buffer),
                 ResponseType.DisplayGet         => BuildDisplayGetResponse(apiVersion, errorCode, buffer),
+                //ResponseType.Info               => BuildInfoResponse(apiVersion, errorCode, buffer),
                 ResponseType.Exit               => BuildEmptyResponse(apiVersion, errorCode),
                 ResponseType.Quit               => BuildEmptyResponse(apiVersion, errorCode),
                 ResponseType.Reset              => BuildEmptyResponse(apiVersion, errorCode),
@@ -73,15 +84,15 @@ namespace Righthand.ViceMonitor.Bridge.Commands
             }
             else
             {
-                segmentBuffer = ManagedBuffer.Empy;
+                segmentBuffer = ManagedBuffer.Empty;
             }
             return new MemoryGetResponse(apiVersion, errorCode, segmentBuffer);
         }
-        internal CheckpointResponse BuildCheckpointResponse(byte apiVersion, ErrorCode errorCode, ReadOnlySpan<byte> buffer)
+        internal CheckpointInfoResponse BuildCheckpointInfoResponse(byte apiVersion, ErrorCode errorCode, ReadOnlySpan<byte> buffer)
         {
             if (errorCode == ErrorCode.OK)
             {
-                return new CheckpointResponse(apiVersion, errorCode,
+                return new CheckpointInfoResponse(apiVersion, errorCode,
                     CheckpointNumber: BitConverter.ToUInt32(buffer),
                     CurrentlyHit: BitConverter.ToBoolean(buffer[4..]),
                     StartAddress: BitConverter.ToUInt16(buffer[5..]),
@@ -96,8 +107,21 @@ namespace Righthand.ViceMonitor.Bridge.Commands
             }
             else
             {
-                return new CheckpointResponse(apiVersion, errorCode, default, default, default, default,
+                return new CheckpointInfoResponse(apiVersion, errorCode, default, default, default, default,
                     default, default, default, default, default, default, default);
+            }
+        }
+        internal CheckpointListResponse BuildCheckpointListResponse(byte apiVersion, ErrorCode errorCode, ReadOnlySpan<byte> buffer)
+        {
+            if (errorCode == ErrorCode.OK)
+            {
+                return new CheckpointListResponse(apiVersion, errorCode, 
+                    TotalNumberOfCheckpoints: BitConverter.ToUInt32(buffer),
+                    Info: ImmutableArray<CheckpointInfoResponse>.Empty);
+            }
+            else
+            {
+                return new CheckpointListResponse(apiVersion, errorCode, default, default);
             }
         }
         internal RegistersResponse BuildRegistersResponse(byte apiVersion, ErrorCode errorCode, ReadOnlySpan<byte> buffer)
@@ -250,9 +274,20 @@ namespace Righthand.ViceMonitor.Bridge.Commands
             }
             else
             {
-                return new DisplayGetResponse(apiVersion, errorCode, default, default, default, default, default, default, ManagedBuffer.Empy);
+                return new DisplayGetResponse(apiVersion, errorCode, default, default, default, default, default, default, ManagedBuffer.Empty);
             }
         }
+        //internal InfoResponse BuildInfoResponse(byte apiVersion, ErrorCode errorCode, ReadOnlySpan<byte> buffer)
+        //{
+        //    if (errorCode == ErrorCode.OK)
+        //    {
+        //        return new InfoResponse(apiVersion, errorCode, VersionRCNumber: buffer[1]);
+        //    }
+        //    else
+        //    {
+        //        return new InfoResponse(apiVersion, errorCode, VersionRCNumber: default);
+        //    }
+        //}
         internal EmptyViceResponse BuildEmptyResponse(byte apiVersion, ErrorCode errorCode) => new(apiVersion, errorCode);
     }
 }

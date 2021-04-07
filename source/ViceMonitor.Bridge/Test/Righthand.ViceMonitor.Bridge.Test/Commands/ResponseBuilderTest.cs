@@ -1,6 +1,7 @@
 ﻿using System;
 using NUnit.Framework;
 using Righthand.ViceMonitor.Bridge.Commands;
+using Righthand.ViceMonitor.Bridge.Responses;
 
 namespace Righthand.ViceMonitor.Bridge.Test.Commands
 {
@@ -16,7 +17,7 @@ namespace Righthand.ViceMonitor.Bridge.Test.Commands
             public void GivenSampleData_CreatesCorrectResponse()
             {
                 ReadOnlySpan<byte> data = GetByteArrayFromData("02 00 00 00 | 00 | e2 fc | e3 fc | 01 | 01 | 04 | 01 | 00 00 00 00 | 00 00 00 00 | 00").AsSpan();
-                var actual = Target.BuildCheckpointResponse(0x01, ErrorCode.OK, data);
+                var actual = Target.BuildCheckpointInfoResponse(0x01, ErrorCode.OK, data);
 
                 Assert.That(actual.ApiVersion, Is.EqualTo(0x01));
                 Assert.That(actual.ErrorCode, Is.EqualTo(ErrorCode.OK));

@@ -19,6 +19,9 @@
     <!--<PackageIcon>icon.png</PackageIcon>-->
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
   </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
+    <DocumentationFile>bin\Release\net5.0\Righthand.ViceMonitor.Bridge.xml</DocumentationFile>
+  </PropertyGroup>
   <ItemGroup>
     <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleToAttribute">
       <_Parameter1>$(AssemblyName).Test</_Parameter1>
