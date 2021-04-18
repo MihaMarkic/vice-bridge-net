@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Net;
+using System.Threading;
 using System.Threading.Tasks;
 using Righthand.ViceMonitor.Bridge.Commands;
 using Righthand.ViceMonitor.Bridge.Services.Implementation;
@@ -55,5 +56,11 @@ namespace Righthand.ViceMonitor.Bridge.Services.Abstract
         /// </summary>
         /// <threadsafety>Can occur on any thread.</threadsafety>
         event EventHandler<ConnectedChangedEventArgs>? ConnectedChanged;
+        /// <summary>
+        /// Waits for connection status change.
+        /// </summary>
+        /// <param name="ct"></param>
+        /// <returns>New IsConnectedValue.</returns>
+        Task<bool> WaitForConnectionStatusChangeAsync(CancellationToken ct = default);
     }
 }

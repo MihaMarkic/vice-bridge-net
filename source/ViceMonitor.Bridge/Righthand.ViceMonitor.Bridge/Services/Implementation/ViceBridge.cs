@@ -389,6 +389,24 @@ namespace Righthand.ViceMonitor.Bridge.Services.Implementation
                 logger.LogDebug("Nothing to dispose async");
             }
         }
+        /// <inheritdoc/>
+        public Task<bool> WaitForConnectionStatusChangeAsync(CancellationToken ct = default)
+        {
+            var tcs = new TaskCompletionSource<bool>();
+            EventHandler<ConnectedChangedEventArgs> handler = null!;
+            handler = (sender, e) =>
+            {
+                tcs.TrySetResult(e.IsConnected);
+                ConnectedChanged -= handler;
+            };
+            ConnectedChanged += handler;
+            ct.Register(() =>
+            {
+                tcs.TrySetCanceled();
+                ConnectedChanged -= handler;
+            });
+            return tcs.Task;
+        }
         /// <summary>
         /// Releases all resources used by the <see cref="ViceBridge"/>.
         /// </summary>
