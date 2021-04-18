@@ -23,7 +23,7 @@ namespace ModernVICEPDBMonitor.Playground
                 builder.SetMinimumLevel(LogLevel.Debug);
                 builder.AddNLog(config);
             });
-            collection.AddEngineServices();
+            collection.AddViceBridge();
             return collection;
         }
     }

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Net;
+using System.Threading;
 using System.Threading.Tasks;
 using Righthand.ViceMonitor.Bridge.Commands;
 using Righthand.ViceMonitor.Bridge.Services.Implementation;
@@ -16,9 +17,13 @@ namespace Righthand.ViceMonitor.Bridge.Services.Abstract
         /// </summary>
         Task? RunnerTask { get; }
         /// <summary>
-        /// Gets running status.
+        /// Gets running status. Running is set once the connection to VICE is established.
         /// </summary>
         bool IsRunning { get; }
+        /// <summary>
+        /// Gets started status. Started is set as soon as bridge starts.
+        /// </summary>
+        bool IsStarted { get; }
         /// <summary>
         /// Gets connection to VICE status.
         /// </summary>
@@ -28,6 +33,11 @@ namespace Righthand.ViceMonitor.Bridge.Services.Abstract
         /// </summary>
         /// <param name="port">Port of the binary monitor. 6502 by default.</param>
         void Start(int port = 6502);
+        /// <summary>
+        /// Stops the bridge.
+        /// </summary>
+        /// <returns></returns>
+        Task StopAsync();
         /// <summary>
         /// Enqueues command for sending
         /// </summary>
@@ -46,5 +56,11 @@ namespace Righthand.ViceMonitor.Bridge.Services.Abstract
         /// </summary>
         /// <threadsafety>Can occur on any thread.</threadsafety>
         event EventHandler<ConnectedChangedEventArgs>? ConnectedChanged;
+        /// <summary>
+        /// Waits for connection status change.
+        /// </summary>
+        /// <param name="ct"></param>
+        /// <returns>New IsConnectedValue.</returns>
+        Task<bool> WaitForConnectionStatusChangeAsync(CancellationToken ct = default);
     }
 }

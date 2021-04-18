@@ -14,7 +14,7 @@ namespace Righthand.ViceMonitor.Bridge
         /// Adds required registrations.
         /// </summary>
         /// <param name="services"></param>
-        public static void AddEngineServices(this IServiceCollection services)
+        public static void AddViceBridge(this IServiceCollection services)
         {
             services.AddSingleton<IViceBridge, ViceBridge>();
             services.AddSingleton<ResponseBuilder>();
