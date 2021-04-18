@@ -5,10 +5,12 @@ using System.Collections.Immutable;
 using System.Linq;
 using System.Net.NetworkInformation;
 using System.Net.Sockets;
+using System.Reflection.Metadata;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Righthand.ViceMonitor.Bridge.Commands;
+using Righthand.ViceMonitor.Bridge.Exceptions;
 using Righthand.ViceMonitor.Bridge.Responses;
 using Righthand.ViceMonitor.Bridge.Services.Abstract;
 
@@ -103,12 +105,13 @@ namespace Righthand.ViceMonitor.Bridge.Services.Implementation
         }
         async Task StartAsync(int port, CancellationToken ct)
         {
-            var socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
             try
             {
+                Socket? socket;
                 while (true)
                 {
                     logger.LogInformation("Starting");
+                    socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
                     try
                     {
                         logger.LogDebug("Waiting for available port");
@@ -136,6 +139,10 @@ namespace Righthand.ViceMonitor.Bridge.Services.Implementation
                         tcs!.SetResult();
                         return;
                     }
+                    catch (SocketDisconnectedException)
+                    {
+                        logger.LogWarning("Socket disconnected");
+                    }
                     catch (Exception ex)
                     {
                         logger.LogError(ex, "Unknown exception occurred");
@@ -145,14 +152,14 @@ namespace Righthand.ViceMonitor.Bridge.Services.Implementation
                         IsConnected = false;
                         OnConnectedChanged(new ConnectedChangedEventArgs(false));
                         logger.LogInformation("Ending");
+                        socket.Shutdown(SocketShutdown.Both);
+                        socket.Close();
+                        socket.Dispose();
                     }
                 }
             }
             finally
             {
-                socket.Shutdown(SocketShutdown.Both);
-                socket.Close();
-                socket.Dispose();
             }
         }
         async Task<ViceResponse> WaitUntilMatchesResponseAsync(Socket socket, uint targetRequestId, CancellationToken ct)
@@ -185,6 +192,21 @@ namespace Righthand.ViceMonitor.Bridge.Services.Implementation
             commands.Enqueue(command);
             return command;
         }
+        /// <summary>
+        /// Checks if socket is still connected
+        /// </summary>
+        /// <param name="socket"></param>
+        /// <returns></returns>
+        /// <remarks>https://stackoverflow.com/questions/2661764/how-to-check-if-a-socket-is-connected-disconnected-in-c</remarks>
+        bool CheckIfSocketConnected(Socket socket)
+        {
+            bool part1 = socket.Poll(1000, SelectMode.SelectRead);
+            bool part2 = (socket.Available == 0);
+            if (part1 && part2)
+                return false;
+            else
+                return true;
+        }
         async Task LoopAsync(Socket socket, CancellationToken ct)
         {
             isRunning = true;
@@ -192,6 +214,10 @@ namespace Righthand.ViceMonitor.Bridge.Services.Implementation
             {
                 while (true)
                 {
+                    if (!CheckIfSocketConnected(socket))
+                    {
+                        throw new SocketDisconnectedException("Socket is disconnected");
+                    }
                     ct.ThrowIfCancellationRequested();
                     while (commands.TryDequeue(out var command))
                     {
@@ -224,6 +250,11 @@ namespace Righthand.ViceMonitor.Bridge.Services.Implementation
                         logger.LogDebug("Will process unbound response");
                         (var response, _) = await GetResponseAsync(socket, ct).ConfigureAwait(false);
                         OnViceResponse(new ViceResponseEventArgs(response));
+                    }
+                    else
+                    {
+                        // prevents too intensive pooling
+                        await Task.Delay(500, ct);
                     }
                 }
             }
