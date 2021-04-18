@@ -34,6 +34,7 @@ namespace Righthand.ViceMonitor.Bridge.Services.Implementation
         readonly ConcurrentQueue<IViceCommand> commands = new ();
         bool isConnected;
         bool isRunning;
+        /// <inheritdoc/>
         public bool IsStarted => tcs is not null && cts is not null;
         /// <inheritdoc />
         public Task? RunnerTask => tcs?.Task;
@@ -106,6 +107,7 @@ namespace Righthand.ViceMonitor.Bridge.Services.Implementation
                 logger.LogWarning("Already running");
             }
         }
+        /// <inheritdoc/>
         public async Task StopAsync()
         {
             if (IsStarted)
