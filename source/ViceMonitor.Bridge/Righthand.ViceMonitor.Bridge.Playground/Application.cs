@@ -67,7 +67,9 @@ namespace ModernVICEPDBMonitor.Playground
                 .Add(new KeyValuePair<string, string>("cl", "Checkpoint list"))
                 .Add(new KeyValuePair<string, string>("cs", "Checkpoint set"))
                 .Add(new KeyValuePair<string, string>("p", "Ping"))
-                .Add(new KeyValuePair<string, string>("qv", "Quit VICE"));
+                .Add(new KeyValuePair<string, string>("qv", "Quit VICE"))
+                .Add(new KeyValuePair<string, string>("start", "Start bridge"))
+                .Add(new KeyValuePair<string, string>("stop", "Stop bridge"));
             bool quit = false;
             while (!quit)
             {
@@ -97,6 +99,12 @@ namespace ModernVICEPDBMonitor.Playground
                     case "qv":
                         await QuitViceAsync(ct);
                         break;
+                    case "start":
+                        bridge.Start();
+                        break;
+                    case "stop":
+                        await StopBridgeAsync(ct);
+                        break;
                     case "q":
                         quit = true;
                         break;
@@ -113,6 +121,19 @@ namespace ModernVICEPDBMonitor.Playground
             }
             AnsiConsole.MarkupLine("[red]Response timed out[/]");
             return default;
+        }
+        async Task StopBridgeAsync(CancellationToken ct)
+        {
+            var stopTask = bridge.StopAsync();
+            bool result = (await Task.WhenAny(stopTask, Task.Delay(5000, ct)) == stopTask);
+            if (!result)
+            {
+                AnsiConsole.MarkupLine("[bold]Failed stopping bridge[/]");
+            }
+            else
+            {
+                AnsiConsole.MarkupLine("Bridge stopped");
+            }
         }
         async Task PingAsync(CancellationToken ct)
         {

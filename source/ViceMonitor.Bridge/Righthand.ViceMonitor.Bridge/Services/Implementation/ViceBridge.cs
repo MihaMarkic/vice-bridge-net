@@ -34,6 +34,7 @@ namespace Righthand.ViceMonitor.Bridge.Services.Implementation
         readonly ConcurrentQueue<IViceCommand> commands = new ();
         bool isConnected;
         bool isRunning;
+        public bool IsStarted => tcs is not null && cts is not null;
         /// <inheritdoc />
         public Task? RunnerTask => tcs?.Task;
         /// <inheritdoc />
@@ -71,7 +72,7 @@ namespace Righthand.ViceMonitor.Bridge.Services.Implementation
                 isAvailable = info.Any(tl => tl.Port == port);
                 if (!isAvailable)
                 {
-                    await Task.Delay(TimeSpan.FromSeconds(5), ct).ConfigureAwait(false);
+                    await Task.Delay(TimeSpan.FromSeconds(.5), ct).ConfigureAwait(false);
                 }
             } while (!isAvailable);
         }
@@ -85,11 +86,14 @@ namespace Righthand.ViceMonitor.Bridge.Services.Implementation
         /// <inheritdoc />
         public void Start(int port = 6502)
         {
-            if (!IsRunning)
+            if (!IsStarted)
             {
                 logger.LogDebug("Start called");
                 tcs = new TaskCompletionSource();
-                cts = new CancellationTokenSource();
+                lock (sync)
+                {
+                    cts = new CancellationTokenSource();
+                }
                 var task = Task.Factory.StartNew(
                     () => StartAsync(port, cts.Token), 
                     cancellationToken: cts.Token, 
@@ -101,7 +105,21 @@ namespace Righthand.ViceMonitor.Bridge.Services.Implementation
             {
                 logger.LogWarning("Already running");
             }
-
+        }
+        public async Task StopAsync()
+        {
+            if (IsStarted)
+            {
+                lock (sync)
+                {
+                    cts?.Cancel();
+                }
+                var runner = RunnerTask;
+                if (runner is not null)
+                {
+                    await runner;
+                }
+            }
         }
         async Task StartAsync(int port, CancellationToken ct)
         {
@@ -136,8 +154,6 @@ namespace Righthand.ViceMonitor.Bridge.Services.Implementation
                     catch (OperationCanceledException)
                     {
                         logger.LogInformation("Finishing loop");
-                        tcs!.SetResult();
-                        return;
                     }
                     catch (SocketDisconnectedException)
                     {
@@ -152,14 +168,22 @@ namespace Righthand.ViceMonitor.Bridge.Services.Implementation
                         IsConnected = false;
                         OnConnectedChanged(new ConnectedChangedEventArgs(false));
                         logger.LogInformation("Ending");
-                        socket.Shutdown(SocketShutdown.Both);
-                        socket.Close();
-                        socket.Dispose();
+                        if (socket.Connected)
+                        {
+                            socket.Shutdown(SocketShutdown.Both);
+                            socket.Close();
+                            socket.Dispose();
+                        }
+                        tcs!.SetResult();
                     }
                 }
             }
             finally
             {
+                lock (sync)
+                {
+                    cts = null;
+                }
             }
         }
         async Task<ViceResponse> WaitUntilMatchesResponseAsync(Socket socket, uint targetRequestId, CancellationToken ct)

@@ -16,9 +16,13 @@ namespace Righthand.ViceMonitor.Bridge.Services.Abstract
         /// </summary>
         Task? RunnerTask { get; }
         /// <summary>
-        /// Gets running status.
+        /// Gets running status. Running is set once the connection to VICE is established.
         /// </summary>
         bool IsRunning { get; }
+        /// <summary>
+        /// Gets started status. Started is set as soon as bridge starts.
+        /// </summary>
+        bool IsStarted { get; }
         /// <summary>
         /// Gets connection to VICE status.
         /// </summary>
@@ -28,6 +32,11 @@ namespace Righthand.ViceMonitor.Bridge.Services.Abstract
         /// </summary>
         /// <param name="port">Port of the binary monitor. 6502 by default.</param>
         void Start(int port = 6502);
+        /// <summary>
+        /// Stops the bridge.
+        /// </summary>
+        /// <returns></returns>
+        Task StopAsync();
         /// <summary>
         /// Enqueues command for sending
         /// </summary>
