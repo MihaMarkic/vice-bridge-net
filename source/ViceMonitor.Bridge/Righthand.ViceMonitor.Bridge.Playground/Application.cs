@@ -37,6 +37,7 @@ namespace ModernVICEPDBMonitor.Playground
                 //bridge.EnqueCommand(checkPointCommand);
                 bridge.Start();
                 bridge.ConnectedChanged += Bridge_ConnectedChanged;
+                bridge.ViceResponse += Bridge_ViceResponse;
                 try
                 {
                     await ShowMenuAsync(ct);
@@ -59,6 +60,11 @@ namespace ModernVICEPDBMonitor.Playground
             Console.WriteLine("App stopped");
         }
 
+        void Bridge_ViceResponse(object? sender, ViceResponseEventArgs e)
+        {
+            AnsiConsole.MarkupLine($"Got unbound [bold]{e.Response.GetType().Name}[/]");
+        }
+
         async Task ShowMenuAsync(CancellationToken ct)
         {
             var options = ImmutableArray<KeyValuePair<string, string>>.Empty
@@ -68,6 +74,7 @@ namespace ModernVICEPDBMonitor.Playground
                 .Add(new KeyValuePair<string, string>("cs", "Checkpoint set"))
                 .Add(new KeyValuePair<string, string>("p", "Ping"))
                 .Add(new KeyValuePair<string, string>("qv", "Quit VICE"))
+                .Add(new KeyValuePair<string, string>("e", "Exit (resumes execution)"))
                 .Add(new KeyValuePair<string, string>("start", "Start bridge"))
                 .Add(new KeyValuePair<string, string>("stop", "Stop bridge"));
             bool quit = false;
@@ -95,6 +102,9 @@ namespace ModernVICEPDBMonitor.Playground
                         break;
                     case "p":
                         await PingAsync(ct);
+                        break;
+                    case "e":
+                        await ExitAsync(ct);
                         break;
                     case "qv":
                         await QuitViceAsync(ct);
@@ -140,6 +150,12 @@ namespace ModernVICEPDBMonitor.Playground
             var sw = Stopwatch.StartNew();
             var ping = bridge.EnqueueCommand(new PingCommand());
             await AwaitWithTimeoutAsync(ping.Response, response => AnsiConsole.MarkupLine($"Ping response: {response.ErrorCode} in {sw.ElapsedMilliseconds:#,##0}ms"));
+        }
+        async Task ExitAsync(CancellationToken ct)
+        {
+            var sw = Stopwatch.StartNew();
+            var ping = bridge.EnqueueCommand(new ExitCommand());
+            await AwaitWithTimeoutAsync(ping.Response, response => AnsiConsole.MarkupLine($"Resume response: {response.ErrorCode} in {sw.ElapsedMilliseconds:#,##0}ms"));
         }
         async Task QuitViceAsync(CancellationToken ct)
         {
