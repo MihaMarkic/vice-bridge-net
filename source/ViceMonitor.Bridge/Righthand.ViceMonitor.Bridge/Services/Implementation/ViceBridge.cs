@@ -125,6 +125,7 @@ namespace Righthand.ViceMonitor.Bridge.Services.Implementation
         }
         async Task StartAsync(int port, CancellationToken ct)
         {
+            Thread.CurrentThread.Name = "Bridge loop";
             try
             {
                 Socket? socket;
