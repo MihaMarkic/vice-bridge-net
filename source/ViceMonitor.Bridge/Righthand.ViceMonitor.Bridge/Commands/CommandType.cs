@@ -100,7 +100,7 @@
         /// <summary>
         /// e_MON_CMD_EXIT
         /// </summary>
-        Exit = 0x88,
+        Exit = 0xaa,
         /// <summary>
         /// e_MON_CMD_QUIT
         /// </summary>
