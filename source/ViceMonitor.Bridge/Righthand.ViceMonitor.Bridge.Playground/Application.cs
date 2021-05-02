@@ -10,7 +10,9 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Net;
+using System.Net.NetworkInformation;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -63,6 +65,13 @@ namespace ModernVICEPDBMonitor.Playground
         void Bridge_ViceResponse(object? sender, ViceResponseEventArgs e)
         {
             AnsiConsole.MarkupLine($"Got unbound [bold]{e.Response.GetType().Name}[/]");
+            switch (e.Response)
+            {
+                case RegistersResponse registers:
+                    string markup = string.Join(" ", registers.Items.Select(i => $"[bold]{i.RegisterId}[/]:{i.RegisterValue:x2}"));
+                    AnsiConsole.MarkupLine($"Registers: {markup}");
+                    break;
+            }
         }
 
         async Task ShowMenuAsync(CancellationToken ct)
@@ -73,6 +82,7 @@ namespace ModernVICEPDBMonitor.Playground
                 .Add(new KeyValuePair<string, string>("cl", "Checkpoint list"))
                 .Add(new KeyValuePair<string, string>("cs", "Checkpoint set"))
                 .Add(new KeyValuePair<string, string>("p", "Ping"))
+                .Add(new KeyValuePair<string, string>("ra", "Registers available"))
                 .Add(new KeyValuePair<string, string>("qv", "Quit VICE"))
                 .Add(new KeyValuePair<string, string>("e", "Exit (resumes execution)"))
                 .Add(new KeyValuePair<string, string>("start", "Start bridge"))
@@ -105,6 +115,9 @@ namespace ModernVICEPDBMonitor.Playground
                         break;
                     case "e":
                         await ExitAsync(ct);
+                        break;
+                    case "ra":
+                        await RegistersAvailableAsync(ct);
                         break;
                     case "qv":
                         await QuitViceAsync(ct);
@@ -144,6 +157,15 @@ namespace ModernVICEPDBMonitor.Playground
             {
                 AnsiConsole.MarkupLine("Bridge stopped");
             }
+        }
+        async Task RegistersAvailableAsync(CancellationToken ct)
+        {
+            var command = bridge.EnqueueCommand(new RegistersAvailableCommand(MemSpace.MainMemory));
+            await AwaitWithTimeoutAsync(command.Response, response =>
+            {
+                string markup = string.Join(" ", response.Items.Select(i => $"[bold]{i.Id}[/]:{i.Name} {i.Size}bytes"));
+                AnsiConsole.MarkupLine($"Registers: {markup}");
+            });
         }
         async Task PingAsync(CancellationToken ct)
         {

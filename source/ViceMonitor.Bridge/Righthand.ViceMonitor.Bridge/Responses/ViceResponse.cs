@@ -119,8 +119,8 @@ namespace Righthand.ViceMonitor.Bridge.Responses
     /// </summary>
     /// <param name="ApiVersion"><inheritdoc /></param>
     /// <param name="ErrorCode"><inheritdoc /></param>
-    /// /// <param name="Banks"></param>
-    public record RegistersAvailableResponse(byte ApiVersion, ErrorCode ErrorCode, ImmutableArray<FullRegisterItem> Banks) : ViceResponse(ApiVersion, ErrorCode);
+    /// /// <param name="Items"></param>
+    public record RegistersAvailableResponse(byte ApiVersion, ErrorCode ErrorCode, ImmutableArray<FullRegisterItem> Items) : ViceResponse(ApiVersion, ErrorCode);
     /// <summary>
     /// Response to <see cref="Righthand.ViceMonitor.Bridge.Commands.BanksAvailableCommand"/>.
     /// </summary>
