@@ -1,20 +1,19 @@
-﻿using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
-using Righthand.ViceMonitor.Bridge;
-using Righthand.ViceMonitor.Bridge.Commands;
-using Righthand.ViceMonitor.Bridge.Responses;
-using Righthand.ViceMonitor.Bridge.Services.Abstract;
-using Spectre.Console;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Net;
-using System.Net.NetworkInformation;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
+using NLog.LayoutRenderers.Wrappers;
+using Righthand.ViceMonitor.Bridge;
+using Righthand.ViceMonitor.Bridge.Commands;
+using Righthand.ViceMonitor.Bridge.Responses;
+using Righthand.ViceMonitor.Bridge.Services.Abstract;
+using Righthand.ViceMonitor.Bridge.Shared;
+using Spectre.Console;
 
 namespace ModernVICEPDBMonitor.Playground
 {
@@ -22,10 +21,12 @@ namespace ModernVICEPDBMonitor.Playground
     {
         readonly ILogger logger;
         readonly IViceBridge bridge;
+        ImmutableDictionary<byte, FullRegisterItem> registers;
         public Application(ILogger<Application> logger, IViceBridge bridge)
         {
             this.logger = logger;
             this.bridge = bridge;
+            registers = ImmutableDictionary<byte, FullRegisterItem>.Empty;
         }
 
         public async Task RunAsync(CancellationToken ct) 
@@ -68,8 +69,7 @@ namespace ModernVICEPDBMonitor.Playground
             switch (e.Response)
             {
                 case RegistersResponse registers:
-                    string markup = string.Join(" ", registers.Items.Select(i => $"[bold]{i.RegisterId}[/]:{i.RegisterValue:x2}"));
-                    AnsiConsole.MarkupLine($"Registers: {markup}");
+                    OutputRegisters(registers.Items);
                     break;
             }
         }
@@ -83,6 +83,7 @@ namespace ModernVICEPDBMonitor.Playground
                 .Add(new KeyValuePair<string, string>("cs", "Checkpoint set"))
                 .Add(new KeyValuePair<string, string>("p", "Ping"))
                 .Add(new KeyValuePair<string, string>("ra", "Registers available"))
+                .Add(new KeyValuePair<string, string>("rg", "Registers get"))
                 .Add(new KeyValuePair<string, string>("qv", "Quit VICE"))
                 .Add(new KeyValuePair<string, string>("e", "Exit (resumes execution)"))
                 .Add(new KeyValuePair<string, string>("start", "Start bridge"))
@@ -118,6 +119,9 @@ namespace ModernVICEPDBMonitor.Playground
                         break;
                     case "ra":
                         await RegistersAvailableAsync(ct);
+                        break;
+                    case "rg":
+                        await RegistersGetAsync(ct);
                         break;
                     case "qv":
                         await QuitViceAsync(ct);
@@ -163,9 +167,36 @@ namespace ModernVICEPDBMonitor.Playground
             var command = bridge.EnqueueCommand(new RegistersAvailableCommand(MemSpace.MainMemory));
             await AwaitWithTimeoutAsync(command.Response, response =>
             {
-                string markup = string.Join(" ", response.Items.Select(i => $"[bold]{i.Id}[/]:{i.Name} {i.Size}bytes"));
-                AnsiConsole.MarkupLine($"Registers: {markup}");
+                string markup = string.Join("\n", response.Items.OrderBy(i => i.Id).Select(i => $"\t[bold]{i.Id}[/]:{i.Name} {i.Size}bytes"));
+                AnsiConsole.MarkupLine($"Registers:\n{markup}");
+                registers = response.Items.ToImmutableDictionary(i => i.Id, i => i);
             });
+        }
+        async Task RegistersGetAsync(CancellationToken ct)
+        {
+            var command = bridge.EnqueueCommand(new RegistersGetCommand(MemSpace.MainMemory));
+            await AwaitWithTimeoutAsync(command.Response, response => OutputRegisters(response.Items));
+
+        }
+        void OutputRegisters(IList<RegisterItem> items)
+        {
+            string markup = string.Join(" ", items.Select(i => 
+            {
+                if (registers.TryGetValue(i.RegisterId, out var register))
+                {
+                    string value = register.Size switch
+                    {
+                        1 => i.RegisterValue > 0 ? "T" : "F",
+                        _ => i.RegisterValue.ToString($"x{register.Size / 4}"),
+                    };
+                    return $"[bold]{register.Name }[/]:{value}";
+                }
+                else
+                {
+                    return $"[bold]{i.RegisterId}[/]:{i.RegisterValue:x2}";
+                }
+            }));
+            AnsiConsole.MarkupLine($"Registers: {markup}");
         }
         async Task PingAsync(CancellationToken ct)
         {
