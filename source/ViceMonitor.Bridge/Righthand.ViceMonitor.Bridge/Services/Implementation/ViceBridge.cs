@@ -310,7 +310,7 @@ namespace Righthand.ViceMonitor.Bridge.Services.Implementation
                     using (var bodyBuffer = byteArrayPool.GetBuffer(responseBodyLength))
                     {
                         await ReadByteArrayAsync(socket, bodyBuffer, ct);
-                        result = responseBuilder.Build(headerBuffer.Data.AsSpan(), bodyBuffer.Data.AsSpan());
+                        result = responseBuilder.Build(headerBuffer.Data.AsSpan(), bodyBuffer.Data.AsSpan()[0..(int)responseBodyLength]);
                     }
                 }
                 else
