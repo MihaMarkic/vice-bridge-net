@@ -210,7 +210,7 @@ namespace ModernVICEPDBMonitor.Playground
         }
         async Task RunSampleAsync(CancellationToken ct)
         {
-            var file = Path.Combine(Path.GetDirectoryName(typeof(Application).Assembly.Location), "Samples", "trigono.o");
+            var file = Path.Combine(Path.GetDirectoryName(typeof(Application).Assembly.Location)!, "Samples", "trigono.o");
             var command = bridge.EnqueueCommand(new AutoStartCommand(runAfterLoading: false, 0, file));
             var response = await command.Response;
         }
