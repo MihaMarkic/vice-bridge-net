@@ -87,7 +87,8 @@ namespace ModernVICEPDBMonitor.Playground
                 .Add(new KeyValuePair<string, string>("qv", "Quit VICE"))
                 .Add(new KeyValuePair<string, string>("e", "Exit (resumes execution)"))
                 .Add(new KeyValuePair<string, string>("start", "Start bridge"))
-                .Add(new KeyValuePair<string, string>("stop", "Stop bridge"));
+                .Add(new KeyValuePair<string, string>("stop", "Stop bridge"))
+                .Add(new KeyValuePair<string, string>("run", "Runs sample trigono.o"));
             bool quit = false;
             while (!quit)
             {
@@ -128,6 +129,9 @@ namespace ModernVICEPDBMonitor.Playground
                         break;
                     case "start":
                         bridge.Start();
+                        break;
+                    case "run":
+                        await RunSampleAsync(ct);
                         break;
                     case "stop":
                         await StopBridgeAsync(ct);
@@ -203,6 +207,12 @@ namespace ModernVICEPDBMonitor.Playground
             var sw = Stopwatch.StartNew();
             var ping = bridge.EnqueueCommand(new PingCommand());
             await AwaitWithTimeoutAsync(ping.Response, response => AnsiConsole.MarkupLine($"Ping response: {response.ErrorCode} in {sw.ElapsedMilliseconds:#,##0}ms"));
+        }
+        async Task RunSampleAsync(CancellationToken ct)
+        {
+            var file = Path.Combine(Path.GetDirectoryName(typeof(Application).Assembly.Location), "Samples", "trigono.o");
+            var command = bridge.EnqueueCommand(new AutoStartCommand(runAfterLoading: false, 0, file));
+            var response = await command.Response;
         }
         async Task ExitAsync(CancellationToken ct)
         {

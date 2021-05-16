@@ -47,7 +47,7 @@ namespace Righthand.ViceMonitor.Bridge.Responses
                 ResponseType.MemorySet          => BuildEmptyResponse(apiVersion, errorCode),
                 ResponseType.CheckpointInfo     => BuildCheckpointInfoResponse(apiVersion, errorCode, buffer),
                 ResponseType.CheckpointList     => BuildCheckpointListResponse(apiVersion, errorCode, buffer),
-                ResponseType.RegisterInfo          => BuildRegistersResponse(apiVersion, errorCode, buffer),
+                ResponseType.RegisterInfo       => BuildRegistersResponse(apiVersion, errorCode, buffer),
                 ResponseType.Dump               => BuildEmptyResponse(apiVersion, errorCode),
                 ResponseType.Undump             => BuildUndumpResponse(apiVersion, errorCode, buffer),
                 ResponseType.ResourceGet        => BuildResourceGetResponse(apiVersion, errorCode, buffer),
@@ -66,7 +66,7 @@ namespace Righthand.ViceMonitor.Bridge.Responses
                 ResponseType.Exit               => BuildEmptyResponse(apiVersion, errorCode),
                 ResponseType.Quit               => BuildEmptyResponse(apiVersion, errorCode),
                 ResponseType.Reset              => BuildEmptyResponse(apiVersion, errorCode),
-                ResponseType.AutoStart          => BuildEmptyResponse(apiVersion, errorCode),
+                ResponseType.AutoStart          => BuildAutoStartResponse(apiVersion, errorCode),
                 //_ => throw new Exception($"Unknown response type {responseType}"),
                 _ => new EmptyViceResponse(apiVersion, errorCode),
             };
@@ -289,5 +289,6 @@ namespace Righthand.ViceMonitor.Bridge.Responses
         //    }
         //}
         internal EmptyViceResponse BuildEmptyResponse(byte apiVersion, ErrorCode errorCode) => new(apiVersion, errorCode);
+        internal AutoStartResponse BuildAutoStartResponse(byte apiVersion, ErrorCode errorCode) => new(apiVersion, errorCode);
     }
 }
