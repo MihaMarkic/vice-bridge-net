@@ -4,6 +4,7 @@ using System.Collections.Immutable;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
@@ -88,7 +89,8 @@ namespace ModernVICEPDBMonitor.Playground
                 .Add(new KeyValuePair<string, string>("e", "Exit (resumes execution)"))
                 .Add(new KeyValuePair<string, string>("start", "Start bridge"))
                 .Add(new KeyValuePair<string, string>("stop", "Stop bridge"))
-                .Add(new KeyValuePair<string, string>("run", "Runs sample trigono.o"));
+                .Add(new KeyValuePair<string, string>("l", "Loads sample tiny.o"))
+                .Add(new KeyValuePair<string, string>("s", "Starts loaded sample tiny.o"));
             bool quit = false;
             while (!quit)
             {
@@ -130,8 +132,11 @@ namespace ModernVICEPDBMonitor.Playground
                     case "start":
                         bridge.Start();
                         break;
-                    case "run":
-                        await RunSampleAsync(ct);
+                    case "l":
+                        await LoadSampleAsync(ct);
+                        break;
+                    case "s":
+                        await StartSampleAsync(ct);
                         break;
                     case "stop":
                         await StopBridgeAsync(ct);
@@ -176,6 +181,15 @@ namespace ModernVICEPDBMonitor.Playground
                 registers = response.Items.ToImmutableDictionary(i => i.Id, i => i);
             });
         }
+        async Task StartSampleAsync(CancellationToken ct)
+        {
+            var register = registers.Values.Single(r => r.Name == "PC");
+            var registerItem = new RegisterItem(register.Id, 0xC000);
+            var argument = ImmutableArray<RegisterItem>.Empty.Add(registerItem);
+            var command = bridge.EnqueueCommand(new RegistersSetCommand(MemSpace.MainMemory, argument));
+            await AwaitWithTimeoutAsync(command.Response, response => OutputRegisters(response.Items));
+
+        }
         async Task RegistersGetAsync(CancellationToken ct)
         {
             var command = bridge.EnqueueCommand(new RegistersGetCommand(MemSpace.MainMemory));
@@ -208,9 +222,9 @@ namespace ModernVICEPDBMonitor.Playground
             var ping = bridge.EnqueueCommand(new PingCommand());
             await AwaitWithTimeoutAsync(ping.Response, response => AnsiConsole.MarkupLine($"Ping response: {response.ErrorCode} in {sw.ElapsedMilliseconds:#,##0}ms"));
         }
-        async Task RunSampleAsync(CancellationToken ct)
+        async Task LoadSampleAsync(CancellationToken ct)
         {
-            var file = Path.Combine(Path.GetDirectoryName(typeof(Application).Assembly.Location)!, "Samples", "trigono.o");
+            var file = Path.Combine(Path.GetDirectoryName(typeof(Application).Assembly.Location)!, "Samples", "tiny.o");
             var command = bridge.EnqueueCommand(new AutoStartCommand(runAfterLoading: false, 0, file));
             var response = await command.Response;
         }

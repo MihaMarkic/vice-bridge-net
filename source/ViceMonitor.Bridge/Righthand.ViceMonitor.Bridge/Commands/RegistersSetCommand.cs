@@ -34,7 +34,7 @@ namespace Righthand.ViceMonitor.Bridge.Commands
             BitConverter.TryWriteBytes(buffer[1..], (ushort)Items.Length);
             for (int i = 0; i < Items.Length; i++)
             {
-                var itemBuffer = buffer.Slice(2 + i * (int)RegisterItem.ContentLength);
+                var itemBuffer = buffer.Slice(3 + i * (int)RegisterItem.ContentLength);
                 var item = Items[i];
                 itemBuffer[0] = RegisterItem.Size;
                 itemBuffer[1] = item.RegisterId;
