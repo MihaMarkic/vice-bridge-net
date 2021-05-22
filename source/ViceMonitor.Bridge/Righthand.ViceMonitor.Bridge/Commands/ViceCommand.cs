@@ -1,5 +1,7 @@
 ﻿using Righthand.ViceMonitor.Bridge.Responses;
 using System;
+using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -30,8 +32,8 @@ namespace Righthand.ViceMonitor.Bridge.Commands
         /// <summary>
         /// Task that returns the result.
         /// </summary>
-        public Task<TResponse> Response => tcs.Task;
-        readonly TaskCompletionSource<TResponse> tcs = new (TaskCreationOptions.RunContinuationsAsynchronously);
+        public Task<CommandResponse<TResponse>> Response => tcs.Task;
+        readonly TaskCompletionSource<CommandResponse<TResponse>> tcs = new (TaskCreationOptions.RunContinuationsAsynchronously);
         /// <summary>
         /// Length of the command's body expressed in bytes.
         /// </summary>
@@ -41,7 +43,14 @@ namespace Righthand.ViceMonitor.Bridge.Commands
         /// <inheritdoc cref="IViceCommand.SetResult(ViceResponse)"/>
         void IViceCommand.SetResult(ViceResponse response)
         {
-            tcs.SetResult((TResponse)response);
+            if (response is TResponse && response.ErrorCode == ErrorCode.OK)
+            {
+                tcs.SetResult(new CommandResponse<TResponse>((TResponse)response));
+            }
+            else
+            {
+                tcs.SetResult(new CommandResponse<TResponse>(response.ErrorCode));
+            }
         }
         /// <inheritdoc cref="IViceCommand.GetBinaryData(uint)"/>
         public (ManagedBuffer Buffer, uint Length) GetBinaryData(uint requestId)

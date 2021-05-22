@@ -148,6 +148,9 @@ namespace Righthand.ViceMonitor.Bridge.Responses
             Image?.Dispose();
         }
     }
+    /// <summary>
+    /// Response to <see cref="Righthand.ViceMonitor.Bridge.Commands.AutoStartCommand"/>.
+    /// </summary>
     public record AutoStartResponse(byte ApiVersion, ErrorCode ErrorCode): ViceResponse(ApiVersion, ErrorCode);
     ///// <summary>
     ///// Response to <see cref="Righthand.ViceMonitor.Bridge.Commands.InfoCommand"/>.

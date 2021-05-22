@@ -22,7 +22,7 @@ namespace Righthand.ViceMonitor.Bridge.Commands
         /// <param name="buffer"></param>
         void WriteContent(Span<byte> buffer);
         /// <summary>
-        /// Sets response.
+        /// Sets response. When ErrorCode is OK, the response is set, otherwise only ErrorCode is set.
         /// </summary>
         /// <param name="response"></param>
         void SetResult(ViceResponse response);

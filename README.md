@@ -33,7 +33,17 @@ After `IViceBridge.IsConnected` property becomes `true`, command can be sent to 
 
 ```csharp
 var ping = bridge.EnqueueCommand(new PingCommand());
-var response = await ping.Response;
+var commandResponse = await ping.Response;
+if (commandResponse.IsSuccess)
+{
+	// response is of type PingCommand expects
+	var response = cr.Response;
+	...
+}
+else
+{
+	Console.WriteLine($"An error with code {commandResponse.ErrorCode} occurred");
+}
 ```
 
 ## A bit more about internal working

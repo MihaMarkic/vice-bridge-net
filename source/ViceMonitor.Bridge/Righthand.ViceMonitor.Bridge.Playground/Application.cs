@@ -85,6 +85,7 @@ namespace ModernVICEPDBMonitor.Playground
                 .Add(new KeyValuePair<string, string>("p", "Ping"))
                 .Add(new KeyValuePair<string, string>("ra", "Registers available"))
                 .Add(new KeyValuePair<string, string>("rg", "Registers get"))
+                .Add(new KeyValuePair<string, string>("rse", "Registers invalid set"))
                 .Add(new KeyValuePair<string, string>("qv", "Quit VICE"))
                 .Add(new KeyValuePair<string, string>("e", "Exit (resumes execution)"))
                 .Add(new KeyValuePair<string, string>("start", "Start bridge"))
@@ -126,6 +127,9 @@ namespace ModernVICEPDBMonitor.Playground
                     case "rg":
                         await RegistersGetAsync(ct);
                         break;
+                    case "rse":
+                        await RegistersSetAsync(ct, new RegisterItem(byte.MaxValue, ushort.MaxValue));
+                        break;
                     case "qv":
                         await QuitViceAsync(ct);
                         break;
@@ -147,13 +151,22 @@ namespace ModernVICEPDBMonitor.Playground
                 }
             }
         }
-        internal async Task<T?> AwaitWithTimeoutAsync<T>(Task<T> task, Action<T> textOnSuccess)
+        internal async Task<CommandResponse<TResponse>?> AwaitWithTimeoutAsync<TResponse>(Task<CommandResponse<TResponse>> task, Action<CommandResponse<TResponse>> textOnSuccess)
+            where TResponse: ViceResponse
         {
             bool success = await Task.WhenAny(task, Task.Delay(5000)) == task;
             if (success)
             {
-                textOnSuccess(task.Result);
-                return task.Result;
+                var commandResponse = task.Result;
+                if (commandResponse.IsSuccess)
+                {
+                    textOnSuccess(task.Result);
+                }
+                else
+                {
+                    AnsiConsole.MarkupLine($"Response returned an error [red]{commandResponse.ErrorCode}[/]");
+                }
+                return commandResponse;
             }
             AnsiConsole.MarkupLine("[red]Response timed out[/]");
             return default;
@@ -174,8 +187,9 @@ namespace ModernVICEPDBMonitor.Playground
         async Task RegistersAvailableAsync(CancellationToken ct)
         {
             var command = bridge.EnqueueCommand(new RegistersAvailableCommand(MemSpace.MainMemory));
-            await AwaitWithTimeoutAsync(command.Response, response =>
+            await AwaitWithTimeoutAsync(command.Response, cr =>
             {
+                var response = cr.Response!;
                 string markup = string.Join("\n", response.Items.OrderBy(i => i.Id).Select(i => $"\t[bold]{i.Id}[/]:{i.Name} {i.Size}bytes"));
                 AnsiConsole.MarkupLine($"Registers:\n{markup}");
                 registers = response.Items.ToImmutableDictionary(i => i.Id, i => i);
@@ -187,14 +201,18 @@ namespace ModernVICEPDBMonitor.Playground
             var registerItem = new RegisterItem(register.Id, 0xC000);
             var argument = ImmutableArray<RegisterItem>.Empty.Add(registerItem);
             var command = bridge.EnqueueCommand(new RegistersSetCommand(MemSpace.MainMemory, argument));
-            await AwaitWithTimeoutAsync(command.Response, response => OutputRegisters(response.Items));
+            await AwaitWithTimeoutAsync(command.Response, cr => OutputRegisters(cr.Response!.Items));
 
         }
         async Task RegistersGetAsync(CancellationToken ct)
         {
             var command = bridge.EnqueueCommand(new RegistersGetCommand(MemSpace.MainMemory));
-            await AwaitWithTimeoutAsync(command.Response, response => OutputRegisters(response.Items));
-
+            await AwaitWithTimeoutAsync(command.Response, cr => OutputRegisters(cr.Response!.Items));
+        }
+        async Task RegistersSetAsync(CancellationToken ct, params RegisterItem[] args)
+        {
+            var command = bridge.EnqueueCommand(new RegistersSetCommand(MemSpace.MainMemory, args));
+            await AwaitWithTimeoutAsync(command.Response, cr => OutputRegisters(cr.Response!.Items));
         }
         void OutputRegisters(IList<RegisterItem> items)
         {
@@ -250,9 +268,10 @@ namespace ModernVICEPDBMonitor.Playground
         {
             var listCommand = new CheckpointListCommand();
             bridge.EnqueueCommand(listCommand);
-            Action<CheckpointListResponse> onSuccess = response =>
+            Action<CommandResponse<CheckpointListResponse>> onSuccess = cr =>
             {
-                AnsiConsole.MarkupLine($"Response has [bold]{response.TotalNumberOfCheckpoints}[/] total number of checkpoints.");
+                var response = cr.Response;
+                AnsiConsole.MarkupLine($"Response has [bold]{response!.TotalNumberOfCheckpoints}[/] total number of checkpoints.");
                 AnsiConsole.MarkupLine("List");
                 int index = 0;
                 foreach (var info in response.Info)
@@ -276,11 +295,13 @@ namespace ModernVICEPDBMonitor.Playground
         {
             var command = new DisplayGetCommand(UseVic: true, ImageFormat.Rgb);
             bridge.EnqueueCommand(command);
-            Action<DisplayGetResponse> onSuccess = async response =>
+            Action<CommandResponse<DisplayGetResponse>> onSuccess = async commandResponse =>
             {
+
+                var response = commandResponse.Response;
                 try
                 {
-                    AnsiConsole.MarkupLine($"Got response [bold]{response.GetType().Name}[/]");
+                    AnsiConsole.MarkupLine($"Got response [bold]{response!.GetType().Name}[/]");
                     if (response.Image is not null)
                     {
                         var image = response.Image.Value;
@@ -300,7 +321,7 @@ namespace ModernVICEPDBMonitor.Playground
                 }
                 finally
                 {
-                    response.Dispose();
+                    response!.Dispose();
                 }
             };
             await AwaitWithTimeoutAsync(command.Response, onSuccess);
