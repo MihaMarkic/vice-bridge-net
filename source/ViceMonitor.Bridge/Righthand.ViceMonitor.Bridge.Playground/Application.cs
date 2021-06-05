@@ -83,6 +83,7 @@ namespace ModernVICEPDBMonitor.Playground
                 .Add(new KeyValuePair<string, string>("cl", "Checkpoint list"))
                 .Add(new KeyValuePair<string, string>("cs", "Checkpoint set"))
                 .Add(new KeyValuePair<string, string>("cd", "Checkpoint delete"))
+                .Add(new KeyValuePair<string, string>("os", "Condition set"))
                 .Add(new KeyValuePair<string, string>("p", "Ping"))
                 .Add(new KeyValuePair<string, string>("ra", "Registers available"))
                 .Add(new KeyValuePair<string, string>("rg", "Registers get"))
@@ -158,13 +159,28 @@ namespace ModernVICEPDBMonitor.Playground
                             switch (parts[0])
                             {
                                 case "cd":
-                                    if (uint.TryParse(parts[1], out var checkpointNumber))
                                     {
-                                        await CheckpointDeleteAsync(checkpointNumber, ct);
+                                        if (uint.TryParse(parts[1], out var checkpointNumber))
+                                        {
+                                            await CheckpointDeleteAsync(checkpointNumber, ct);
+                                        }
+                                        else
+                                        {
+                                            AnsiConsole.MarkupLine("Expected an [red]uint[/] as an checkpoint number argument");
+                                        }
                                     }
-                                    else
+                                    break;
+                                case "os":
                                     {
-                                        AnsiConsole.MarkupLine("Expected an [red]uint[/] as an checkpoint number argument");
+                                        if (uint.TryParse(parts[1], out var checkpointNumber))
+                                        {
+                                            string? condition = parts.Length > 2 ? parts[2] : null;
+                                            await ConditionSetAsync(checkpointNumber, condition ?? "A == $0", ct);
+                                        }
+                                        else
+                                        {
+                                            AnsiConsole.MarkupLine("Expected an [red]uint[/] as an checkpoint number argument and optionally condition text");
+                                        }
                                     }
                                     break;
                             }
@@ -310,6 +326,12 @@ namespace ModernVICEPDBMonitor.Playground
                 }
             };
             await AwaitWithTimeoutAsync(listCommand.Response, onSuccess);
+        }
+        async Task ConditionSetAsync(uint checkpointNumber, string condition, CancellationToken ct)
+        {
+            var command = bridge.EnqueueCommand(new ConditionSetCommand(checkpointNumber, condition));
+            await AwaitWithTimeoutAsync(command.Response, response =>
+                AnsiConsole.MarkupLine($"Set response: {response.ErrorCode} and response type {response.Response?.GetType().Name}"));
         }
         // not yet implemented in VICE stable
         //async Task ViceInfoAsync(CancellationToken ct)
