@@ -124,6 +124,9 @@ namespace ModernVICEPDBMonitor.Playground
                     case "mg":
                         await MemoryGetAsync(ct);
                         break;
+                    case "ms":
+                        await MemorySetAsync(ct);
+                        break;
                     case "p":
                         await PingAsync(ct);
                         break;
@@ -354,6 +357,24 @@ namespace ModernVICEPDBMonitor.Playground
                     AnsiConsole.MarkupLine($"Set response: {response.ErrorCode} [red]without data[/red]");
                 }
             });
+        }
+        byte counter = 0;
+        async Task MemorySetAsync(CancellationToken ct)
+        {
+            using (var buffer = BufferManager.GetBuffer(8))
+            {
+                // makes sample content where first byte changes each time method is called to verify that VICE data has been indeed changed
+                buffer.Data[0] = counter;
+                for (int i = 1; i < 8; i++)
+                {
+                    buffer.Data[i] = (byte)i;
+                }
+                counter++;
+                var command = bridge.EnqueueCommand(
+                    new MemorySetCommand(0, 0x0812, 0x0819, MemSpace.MainMemory, 0, buffer));
+                await AwaitWithTimeoutAsync(command.Response, response =>
+                    AnsiConsole.MarkupLine($"Set response: {response.ErrorCode} and response type {response.Response?.GetType().Name}"));
+            }
         }
         // not yet implemented in VICE stable
         //async Task ViceInfoAsync(CancellationToken ct)

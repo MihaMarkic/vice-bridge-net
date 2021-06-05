@@ -26,7 +26,7 @@ namespace Righthand.ViceMonitor.Bridge.Commands
             BitConverter.TryWriteBytes(buffer[3..], EndAddress);
             buffer[5] = (byte)MemSpace;
             BitConverter.TryWriteBytes(buffer[6..], BankId);
-            MemoryContent.Data.CopyTo(buffer[8..]);
+            MemoryContent.Data[0..(int)MemoryContent.Size].CopyTo(buffer[8..]);
         }
         /// <summary>
         /// Releases all resources used by the <see cref="MemorySetCommand"/>.
