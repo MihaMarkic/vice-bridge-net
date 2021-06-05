@@ -84,6 +84,8 @@ namespace ModernVICEPDBMonitor.Playground
                 .Add(new KeyValuePair<string, string>("cs", "Checkpoint set"))
                 .Add(new KeyValuePair<string, string>("cd", "Checkpoint delete"))
                 .Add(new KeyValuePair<string, string>("os", "Condition set"))
+                .Add(new KeyValuePair<string, string>("mg", "Memory get"))
+                .Add(new KeyValuePair<string, string>("ms", "Memory set"))
                 .Add(new KeyValuePair<string, string>("p", "Ping"))
                 .Add(new KeyValuePair<string, string>("ra", "Registers available"))
                 .Add(new KeyValuePair<string, string>("rg", "Registers get"))
@@ -118,6 +120,9 @@ namespace ModernVICEPDBMonitor.Playground
                         break;
                     case "cs":
                         await CheckpointSetAsync(ct);
+                        break;
+                    case "mg":
+                        await MemoryGetAsync(ct);
                         break;
                     case "p":
                         await PingAsync(ct);
@@ -332,6 +337,23 @@ namespace ModernVICEPDBMonitor.Playground
             var command = bridge.EnqueueCommand(new ConditionSetCommand(checkpointNumber, condition));
             await AwaitWithTimeoutAsync(command.Response, response =>
                 AnsiConsole.MarkupLine($"Set response: {response.ErrorCode} and response type {response.Response?.GetType().Name}"));
+        }
+        async Task MemoryGetAsync(CancellationToken ct)
+        {
+            var command = bridge.EnqueueCommand(new MemoryGetCommand(0, 0x0812, 0x081A, MemSpace.MainMemory, 0));
+            await AwaitWithTimeoutAsync(command.Response, response =>
+            {
+                if (response.Response?.Memory is not null)
+                {
+                    string data = string.Join(" ", response.Response.Memory.Value.Data.Select(b => $"${b:X2}"));
+                    AnsiConsole.MarkupLine($"Set response: {response.ErrorCode}: [bold]{data}[/]");
+                    response.Response.Memory.Value.Dispose();
+                }
+                else
+                {
+                    AnsiConsole.MarkupLine($"Set response: {response.ErrorCode} [red]without data[/red]");
+                }
+            });
         }
         // not yet implemented in VICE stable
         //async Task ViceInfoAsync(CancellationToken ct)
