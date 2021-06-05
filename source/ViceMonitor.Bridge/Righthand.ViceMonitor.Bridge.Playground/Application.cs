@@ -374,7 +374,8 @@ namespace ModernVICEPDBMonitor.Playground
             {
                 if (response.Response?.Memory is not null)
                 {
-                    string data = string.Join(" ", response.Response.Memory.Value.Data.Select(b => $"${b:X2}"));
+                    var buffer = response.Response.Memory.Value;
+                    string data = string.Join(" ", buffer.Data.Take((int)buffer.Size).Select(b => $"${b:X2}"));
                     AnsiConsole.MarkupLine($"Set response: {response.ErrorCode}: [bold]{data}[/]");
                     response.Response.Memory.Value.Dispose();
                 }
