@@ -82,6 +82,7 @@ namespace ModernVICEPDBMonitor.Playground
                 //.Add("vi", "VICE info")
                 .Add(new KeyValuePair<string, string>("cl", "Checkpoint list"))
                 .Add(new KeyValuePair<string, string>("cs", "Checkpoint set"))
+                .Add(new KeyValuePair<string, string>("cd", "Checkpoint delete"))
                 .Add(new KeyValuePair<string, string>("p", "Ping"))
                 .Add(new KeyValuePair<string, string>("ra", "Registers available"))
                 .Add(new KeyValuePair<string, string>("rg", "Registers get"))
@@ -103,6 +104,8 @@ namespace ModernVICEPDBMonitor.Playground
                 string? command = Console.ReadLine();
                 switch (command)
                 {
+                    case null:
+                        break;
                     case "dg":
                         await GetDisplayAsync(ct);
                         break;
@@ -147,6 +150,25 @@ namespace ModernVICEPDBMonitor.Playground
                         break;
                     case "q":
                         quit = true;
+                        break;
+                    default:
+                        var parts = command.Split(' ').Where(p => !string.IsNullOrWhiteSpace(p)).ToImmutableArray();
+                        if (parts.Length > 1)
+                        {
+                            switch (parts[0])
+                            {
+                                case "cd":
+                                    if (uint.TryParse(parts[1], out var checkpointNumber))
+                                    {
+                                        await CheckpointDeleteAsync(checkpointNumber, ct);
+                                    }
+                                    else
+                                    {
+                                        AnsiConsole.MarkupLine("Expected an [red]uint[/] as an checkpoint number argument");
+                                    }
+                                    break;
+                            }
+                        }
                         break;
                 }
             }
@@ -262,7 +284,14 @@ namespace ModernVICEPDBMonitor.Playground
         {
             var setCommand = bridge.EnqueueCommand(new CheckpointSetCommand(0x1000, 0x2000, StopWhenHit: true, Enabled: true,
                CpuOperation: CpuOperation.Load, Temporary: true));
-            await AwaitWithTimeoutAsync(setCommand.Response, response => AnsiConsole.MarkupLine($"Set response: {response.ErrorCode}"));
+            await AwaitWithTimeoutAsync(setCommand.Response, response => 
+                AnsiConsole.MarkupLine($"Set response: {response.ErrorCode} with Checkpoint Number {response.Response?.CheckpointNumber}"));
+        }
+        async Task CheckpointDeleteAsync(uint checkpointNumber, CancellationToken ct)
+        {
+            var setCommand = bridge.EnqueueCommand(new CheckpointDeleteCommand(checkpointNumber));
+            await AwaitWithTimeoutAsync(setCommand.Response, response => 
+                AnsiConsole.MarkupLine($"Set response: {response.ErrorCode} and response type {response.Response?.GetType().Name}"));
         }
         async Task CheckpointListAsync(CancellationToken ct)
         {
