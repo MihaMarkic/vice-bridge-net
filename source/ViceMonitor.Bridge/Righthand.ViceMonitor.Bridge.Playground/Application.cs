@@ -83,6 +83,7 @@ namespace ModernVICEPDBMonitor.Playground
                 .Add(new KeyValuePair<string, string>("cl", "Checkpoint list"))
                 .Add(new KeyValuePair<string, string>("cs", "Checkpoint set"))
                 .Add(new KeyValuePair<string, string>("cd", "Checkpoint delete"))
+                .Add(new KeyValuePair<string, string>("ct", "Checkpoint toggle"))
                 .Add(new KeyValuePair<string, string>("os", "Condition set"))
                 .Add(new KeyValuePair<string, string>("mg", "Memory get"))
                 .Add(new KeyValuePair<string, string>("ms", "Memory set"))
@@ -184,6 +185,24 @@ namespace ModernVICEPDBMonitor.Playground
                                         {
                                             string? condition = parts.Length > 2 ? parts[2] : null;
                                             await ConditionSetAsync(checkpointNumber, condition ?? "A == $0", ct);
+                                        }
+                                        else
+                                        {
+                                            AnsiConsole.MarkupLine("Expected an [red]uint[/] as an checkpoint number argument and optionally condition text");
+                                        }
+                                    }
+                                    break;
+                                case "ct":
+                                    {
+                                        if (uint.TryParse(parts[1], out var checkpointNumber))
+                                        {
+                                            bool enabled;
+                                            if (!(parts.Length > 2 && bool.TryParse(parts[2], out enabled)))
+                                            {
+                                                enabled = false;
+                                            }
+                                            AnsiConsole.MarkupLine($"Setting enabled to [bold]{enabled}[/]");
+                                            await CheckpointToggleAsync(checkpointNumber, enabled, ct);
                                         }
                                         else
                                         {
@@ -317,6 +336,12 @@ namespace ModernVICEPDBMonitor.Playground
             await AwaitWithTimeoutAsync(setCommand.Response, response => 
                 AnsiConsole.MarkupLine($"Set response: {response.ErrorCode} and response type {response.Response?.GetType().Name}"));
         }
+        async Task CheckpointToggleAsync(uint checkpointNumber, bool enabled, CancellationToken ct)
+        {
+            var setCommand = bridge.EnqueueCommand(new CheckpointToggleCommand(checkpointNumber, enabled));
+            await AwaitWithTimeoutAsync(setCommand.Response, response =>
+                AnsiConsole.MarkupLine($"Set response: {response.ErrorCode} and response type {response.Response?.GetType().Name}"));
+        }
         async Task CheckpointListAsync(CancellationToken ct)
         {
             var listCommand = new CheckpointListCommand();
@@ -329,7 +354,8 @@ namespace ModernVICEPDBMonitor.Playground
                 int index = 0;
                 foreach (var info in response.Info)
                 {
-                    AnsiConsole.MarkupLine($"[bold]{index}[/]: Number:{info.CheckpointNumber} CpuOperation:{info.CpuOperation}");
+                    string status = info.Enabled ? "[bold]enabled[/]" : "[red]disabled[/]";
+                    AnsiConsole.MarkupLine($"[bold]{index}[/]: Number:{info.CheckpointNumber} CpuOperation:{info.CpuOperation} {status}");
                     index++;
                 }
             };

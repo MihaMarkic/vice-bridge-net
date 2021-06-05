@@ -8,7 +8,7 @@ namespace Righthand.ViceMonitor.Bridge.Commands
     /// </summary>
     /// <param name="CheckpointNumber"></param>
     /// <param name="Enabled"></param>
-    public record CheckpointToggleCommand(uint CheckpointNumber, bool Enabled) : ViceCommand<CheckpointInfoResponse>(CommandType.CheckpointToggle)
+    public record CheckpointToggleCommand(uint CheckpointNumber, bool Enabled) : ViceCommand<EmptyViceResponse>(CommandType.CheckpointToggle)
     {
         /// <inheritdoc />
         public override uint ContentLength => sizeof(uint) + sizeof(byte);

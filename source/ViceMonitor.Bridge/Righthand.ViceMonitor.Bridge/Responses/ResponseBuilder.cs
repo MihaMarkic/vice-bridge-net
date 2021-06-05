@@ -47,6 +47,7 @@ namespace Righthand.ViceMonitor.Bridge.Responses
                 ResponseType.MemorySet          => BuildEmptyResponse(apiVersion, errorCode),
                 ResponseType.CheckpointInfo     => BuildCheckpointInfoResponse(apiVersion, errorCode, buffer),
                 ResponseType.CheckpointList     => BuildCheckpointListResponse(apiVersion, errorCode, buffer),
+                ResponseType.CheckpointToggle   => BuildEmptyResponse(apiVersion, errorCode),
                 ResponseType.ConditionSet       => BuildEmptyResponse(apiVersion, errorCode),
                 ResponseType.RegisterInfo       => BuildRegistersResponse(apiVersion, errorCode, buffer),
                 ResponseType.Dump               => BuildEmptyResponse(apiVersion, errorCode),
