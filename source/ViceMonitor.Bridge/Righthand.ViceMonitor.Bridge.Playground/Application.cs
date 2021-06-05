@@ -371,7 +371,7 @@ namespace ModernVICEPDBMonitor.Playground
                 }
                 counter++;
                 var command = bridge.EnqueueCommand(
-                    new MemorySetCommand(0, 0x0812, 0x0819, MemSpace.MainMemory, 0, buffer));
+                    new MemorySetCommand(0, 0x0812, MemSpace.MainMemory, 0, buffer));
                 await AwaitWithTimeoutAsync(command.Response, response =>
                     AnsiConsole.MarkupLine($"Set response: {response.ErrorCode} and response type {response.Response?.GetType().Name}"));
             }
