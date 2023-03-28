@@ -11,6 +11,8 @@ A cross platform .NET 5 library that implements a bridge for communication with 
 
 Tested(limited on Windows 10) and built against VICE 3.5.
 
+**Important**: At the moment, it works only against API v1, not API v2 which is implemented at least in VICE 3.7.
+
 ## Quick start
 
 Start VICE with *-binarymonitor* argument so it listens to default port 6502.
