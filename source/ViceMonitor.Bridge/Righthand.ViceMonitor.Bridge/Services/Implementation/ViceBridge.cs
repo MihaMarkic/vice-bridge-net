@@ -5,10 +5,12 @@ using System.Collections.Immutable;
 using System.Linq;
 using System.Net.NetworkInformation;
 using System.Net.Sockets;
+using System.Reflection.Metadata;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Righthand.ViceMonitor.Bridge.Commands;
+using Righthand.ViceMonitor.Bridge.Exceptions;
 using Righthand.ViceMonitor.Bridge.Responses;
 using Righthand.ViceMonitor.Bridge.Services.Abstract;
 
@@ -32,6 +34,8 @@ namespace Righthand.ViceMonitor.Bridge.Services.Implementation
         readonly ConcurrentQueue<IViceCommand> commands = new ();
         bool isConnected;
         bool isRunning;
+        /// <inheritdoc/>
+        public bool IsStarted => tcs is not null && cts is not null;
         /// <inheritdoc />
         public Task? RunnerTask => tcs?.Task;
         /// <inheritdoc />
@@ -69,7 +73,7 @@ namespace Righthand.ViceMonitor.Bridge.Services.Implementation
                 isAvailable = info.Any(tl => tl.Port == port);
                 if (!isAvailable)
                 {
-                    await Task.Delay(TimeSpan.FromSeconds(5), ct).ConfigureAwait(false);
+                    await Task.Delay(TimeSpan.FromSeconds(.5), ct).ConfigureAwait(false);
                 }
             } while (!isAvailable);
         }
@@ -83,11 +87,14 @@ namespace Righthand.ViceMonitor.Bridge.Services.Implementation
         /// <inheritdoc />
         public void Start(int port = 6502)
         {
-            if (!IsRunning)
+            if (!IsStarted)
             {
                 logger.LogDebug("Start called");
                 tcs = new TaskCompletionSource();
-                cts = new CancellationTokenSource();
+                lock (sync)
+                {
+                    cts = new CancellationTokenSource();
+                }
                 var task = Task.Factory.StartNew(
                     () => StartAsync(port, cts.Token), 
                     cancellationToken: cts.Token, 
@@ -99,16 +106,33 @@ namespace Righthand.ViceMonitor.Bridge.Services.Implementation
             {
                 logger.LogWarning("Already running");
             }
-
+        }
+        /// <inheritdoc/>
+        public async Task StopAsync()
+        {
+            if (IsStarted)
+            {
+                lock (sync)
+                {
+                    cts?.Cancel();
+                }
+                var runner = RunnerTask;
+                if (runner is not null)
+                {
+                    await runner;
+                }
+            }
         }
         async Task StartAsync(int port, CancellationToken ct)
         {
-            var socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+            Thread.CurrentThread.Name = "Bridge loop";
             try
             {
+                Socket? socket;
                 while (true)
                 {
                     logger.LogInformation("Starting");
+                    socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
                     try
                     {
                         logger.LogDebug("Waiting for available port");
@@ -133,8 +157,10 @@ namespace Righthand.ViceMonitor.Bridge.Services.Implementation
                     catch (OperationCanceledException)
                     {
                         logger.LogInformation("Finishing loop");
-                        tcs!.SetResult();
-                        return;
+                    }
+                    catch (SocketDisconnectedException)
+                    {
+                        logger.LogWarning("Socket disconnected");
                     }
                     catch (Exception ex)
                     {
@@ -145,14 +171,22 @@ namespace Righthand.ViceMonitor.Bridge.Services.Implementation
                         IsConnected = false;
                         OnConnectedChanged(new ConnectedChangedEventArgs(false));
                         logger.LogInformation("Ending");
+                        if (socket.Connected)
+                        {
+                            socket.Shutdown(SocketShutdown.Both);
+                            socket.Close();
+                            socket.Dispose();
+                        }
+                        tcs!.SetResult();
                     }
                 }
             }
             finally
             {
-                socket.Shutdown(SocketShutdown.Both);
-                socket.Close();
-                socket.Dispose();
+                lock (sync)
+                {
+                    cts = null;
+                }
             }
         }
         async Task<ViceResponse> WaitUntilMatchesResponseAsync(Socket socket, uint targetRequestId, CancellationToken ct)
@@ -185,6 +219,21 @@ namespace Righthand.ViceMonitor.Bridge.Services.Implementation
             commands.Enqueue(command);
             return command;
         }
+        /// <summary>
+        /// Checks if socket is still connected
+        /// </summary>
+        /// <param name="socket"></param>
+        /// <returns></returns>
+        /// <remarks>https://stackoverflow.com/questions/2661764/how-to-check-if-a-socket-is-connected-disconnected-in-c</remarks>
+        bool CheckIfSocketConnected(Socket socket)
+        {
+            bool part1 = socket.Poll(1000, SelectMode.SelectRead);
+            bool part2 = (socket.Available == 0);
+            if (part1 && part2)
+                return false;
+            else
+                return true;
+        }
         async Task LoopAsync(Socket socket, CancellationToken ct)
         {
             isRunning = true;
@@ -192,6 +241,10 @@ namespace Righthand.ViceMonitor.Bridge.Services.Implementation
             {
                 while (true)
                 {
+                    if (!CheckIfSocketConnected(socket))
+                    {
+                        throw new SocketDisconnectedException("Socket is disconnected");
+                    }
                     ct.ThrowIfCancellationRequested();
                     while (commands.TryDequeue(out var command))
                     {
@@ -225,6 +278,11 @@ namespace Righthand.ViceMonitor.Bridge.Services.Implementation
                         (var response, _) = await GetResponseAsync(socket, ct).ConfigureAwait(false);
                         OnViceResponse(new ViceResponseEventArgs(response));
                     }
+                    else
+                    {
+                        // prevents too intensive pooling
+                        await Task.Delay(500, ct);
+                    }
                 }
             }
             finally
@@ -252,7 +310,7 @@ namespace Righthand.ViceMonitor.Bridge.Services.Implementation
                     using (var bodyBuffer = byteArrayPool.GetBuffer(responseBodyLength))
                     {
                         await ReadByteArrayAsync(socket, bodyBuffer, ct);
-                        result = responseBuilder.Build(headerBuffer.Data.AsSpan(), bodyBuffer.Data.AsSpan());
+                        result = responseBuilder.Build(headerBuffer.Data.AsSpan(), bodyBuffer.Data.AsSpan()[0..(int)responseBodyLength]);
                     }
                 }
                 else
@@ -333,6 +391,24 @@ namespace Righthand.ViceMonitor.Bridge.Services.Implementation
             {
                 logger.LogDebug("Nothing to dispose async");
             }
+        }
+        /// <inheritdoc/>
+        public Task<bool> WaitForConnectionStatusChangeAsync(CancellationToken ct = default)
+        {
+            var tcs = new TaskCompletionSource<bool>();
+            EventHandler<ConnectedChangedEventArgs> handler = null!;
+            handler = (sender, e) =>
+            {
+                tcs.TrySetResult(e.IsConnected);
+                ConnectedChanged -= handler;
+            };
+            ConnectedChanged += handler;
+            ct.Register(() =>
+            {
+                tcs.TrySetCanceled();
+                ConnectedChanged -= handler;
+            });
+            return tcs.Task;
         }
         /// <summary>
         /// Releases all resources used by the <see cref="ViceBridge"/>.

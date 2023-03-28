@@ -30,7 +30,7 @@ namespace Righthand.ViceMonitor.Bridge.Commands
             ConditionExpression = conditionExpression;
         }
         /// <inheritdoc />
-        public override uint ContentLength => sizeof(uint) + (uint)ConditionExpression.Length;
+        public override uint ContentLength => sizeof(uint) + sizeof(byte) + (uint)ConditionExpression.Length;
         /// <inheritdoc />
         public override void WriteContent(Span<byte> buffer)
         {

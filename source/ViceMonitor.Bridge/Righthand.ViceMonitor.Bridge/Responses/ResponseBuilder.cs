@@ -47,7 +47,9 @@ namespace Righthand.ViceMonitor.Bridge.Responses
                 ResponseType.MemorySet          => BuildEmptyResponse(apiVersion, errorCode),
                 ResponseType.CheckpointInfo     => BuildCheckpointInfoResponse(apiVersion, errorCode, buffer),
                 ResponseType.CheckpointList     => BuildCheckpointListResponse(apiVersion, errorCode, buffer),
-                ResponseType.RegisterInfo          => BuildRegistersResponse(apiVersion, errorCode, buffer),
+                ResponseType.CheckpointToggle   => BuildEmptyResponse(apiVersion, errorCode),
+                ResponseType.ConditionSet       => BuildEmptyResponse(apiVersion, errorCode),
+                ResponseType.RegisterInfo       => BuildRegistersResponse(apiVersion, errorCode, buffer),
                 ResponseType.Dump               => BuildEmptyResponse(apiVersion, errorCode),
                 ResponseType.Undump             => BuildUndumpResponse(apiVersion, errorCode, buffer),
                 ResponseType.ResourceGet        => BuildResourceGetResponse(apiVersion, errorCode, buffer),
@@ -66,7 +68,7 @@ namespace Righthand.ViceMonitor.Bridge.Responses
                 ResponseType.Exit               => BuildEmptyResponse(apiVersion, errorCode),
                 ResponseType.Quit               => BuildEmptyResponse(apiVersion, errorCode),
                 ResponseType.Reset              => BuildEmptyResponse(apiVersion, errorCode),
-                ResponseType.AutoStart          => BuildEmptyResponse(apiVersion, errorCode),
+                ResponseType.AutoStart          => BuildAutoStartResponse(apiVersion, errorCode),
                 //_ => throw new Exception($"Unknown response type {responseType}"),
                 _ => new EmptyViceResponse(apiVersion, errorCode),
             };
@@ -246,11 +248,11 @@ namespace Righthand.ViceMonitor.Bridge.Responses
                     byte registerId = itemBuffer[1];
                     byte registerSize = itemBuffer[2];
                     byte nameLength = itemBuffer[3];
-                    string name = Encoding.ASCII.GetString(buffer.Slice(4, nameLength));
+                    string name = Encoding.ASCII.GetString(itemBuffer.Slice(4, nameLength));
 
                     var item = new FullRegisterItem(registerId, registerSize, name);
                     items = items.Add(item);
-                    offset += itemSize + 1;
+                    offset = itemSize + 1;
                 }
             }
             return new RegistersAvailableResponse(apiVersion, errorCode, items);
@@ -289,5 +291,6 @@ namespace Righthand.ViceMonitor.Bridge.Responses
         //    }
         //}
         internal EmptyViceResponse BuildEmptyResponse(byte apiVersion, ErrorCode errorCode) => new(apiVersion, errorCode);
+        internal AutoStartResponse BuildAutoStartResponse(byte apiVersion, ErrorCode errorCode) => new(apiVersion, errorCode);
     }
 }

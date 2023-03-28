@@ -22,6 +22,14 @@
         /// </summary>
         CheckpointList                      = 0x14,
         /// <summary>
+        /// MON_RESPONSE_CHECKPOINT_TOGGLE
+        /// </summary>
+        CheckpointToggle                    = 0x15,
+        /// <summary>
+        /// MON_RESPONSE_CONDITION_SET
+        /// </summary>
+        ConditionSet                        = 0x22,
+        /// <summary>
         /// MON_RESPONSE_REGISTER_INFO
         /// </summary>
         RegisterInfo                        = 0x31,

@@ -6,7 +6,7 @@ namespace Righthand.ViceMonitor.Bridge.Commands
     /// <summary>
     /// Load a program then return to the monitor 
     /// </summary>
-    public record AutoStartCommand : ViceCommand<EmptyViceResponse>
+    public record AutoStartCommand : ViceCommand<AutoStartResponse>
     {
         /// <summary>
         /// Run after loading?
@@ -26,7 +26,7 @@ namespace Righthand.ViceMonitor.Bridge.Commands
         /// <param name="runAfterLoading">Run after loading?</param>
         /// <param name="fileIndex">The index of the file to execute, if a disk image. 0x00 is the default value.</param>
         /// <param name="filename">The filename to autoload. </param>
-        public AutoStartCommand(bool runAfterLoading, ushort fileIndex, string filename) : base(CommandType.Quit)
+        public AutoStartCommand(bool runAfterLoading, ushort fileIndex, string filename) : base(CommandType.AutoStart)
         {
             RunAfterLoading = runAfterLoading;
             FileIndex = fileIndex;
