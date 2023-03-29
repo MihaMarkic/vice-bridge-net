@@ -1,12 +1,14 @@
-﻿using Righthand.ViceMonitor.Bridge.Responses;
-using System;
-using System.Diagnostics;
-using System.Diagnostics.CodeAnalysis;
+﻿using System;
 using System.Text;
 using System.Threading.Tasks;
+using Righthand.ViceMonitor.Bridge.Responses;
 
 namespace Righthand.ViceMonitor.Bridge.Commands
 {
+    public static class ViceCommand
+    {
+        public const int DefaultApiVersion = 0x02;
+    }
     /// <inheritdoc cref="IViceCommand"/>
     /// <summary>
     /// Base class for VICE commands.
@@ -24,7 +26,7 @@ namespace Righthand.ViceMonitor.Bridge.Commands
         /// </summary>
         /// <param name="commandType"></param>
         /// <param name="apiVersion"></param>
-        protected ViceCommand(CommandType commandType, byte apiVersion = 0x01)
+        protected ViceCommand(CommandType commandType, byte apiVersion = ViceCommand.DefaultApiVersion)
         {
             CommandType = commandType;
             ApiVersion = apiVersion;
@@ -92,7 +94,8 @@ namespace Righthand.ViceMonitor.Bridge.Commands
         /// </summary>
         /// <param name="commandType"></param>
         /// <param name="apiVersion"></param>
-        public ParameterlessCommand(CommandType commandType, byte apiVersion = 0x01): base(commandType, apiVersion)
+        protected ParameterlessCommand(CommandType commandType, byte apiVersion = ViceCommand.DefaultApiVersion) 
+            : base(commandType, apiVersion)
         {
 
         }

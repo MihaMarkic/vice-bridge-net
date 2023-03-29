@@ -79,7 +79,7 @@ namespace ModernVICEPDBMonitor.Playground
         {
             var options = ImmutableArray<KeyValuePair<string, string>>.Empty
                 .Add(new KeyValuePair<string, string>("dg", "Display get"))
-                //.Add("vi", "VICE info")
+                .Add(new KeyValuePair<string, string>("vi", "VICE info"))
                 .Add(new KeyValuePair<string, string>("cl", "Checkpoint list"))
                 .Add(new KeyValuePair<string, string>("cs", "Checkpoint set"))
                 .Add(new KeyValuePair<string, string>("cd", "Checkpoint delete"))
@@ -113,9 +113,9 @@ namespace ModernVICEPDBMonitor.Playground
                     case "dg":
                         await GetDisplayAsync(ct);
                         break;
-                    //case "vi":
-                    //    await ViceInfoAsync(ct);
-                    //    break;
+                    case "vi":
+                        await ViceInfoAsync(ct);
+                        break;
                     case "cl":
                         await CheckpointListAsync(ct);
                         break;
@@ -403,15 +403,17 @@ namespace ModernVICEPDBMonitor.Playground
                     AnsiConsole.MarkupLine($"Set response: {response.ErrorCode} and response type {response.Response?.GetType().Name}"));
             }
         }
-        // not yet implemented in VICE stable
-        //async Task ViceInfoAsync(CancellationToken ct)
-        //{
-        //    var command = new InfoCommand();
-        //    bridge.EnqueueCommand(command);
-        //    var response = await command.Response;
-        //    AnsiConsole.MarkupLine($"VICE version RC number is [bold]{response.VersionRCNumber}[/]");
-
-        //}
+        async Task ViceInfoAsync(CancellationToken ct)
+        {
+            var command = new InfoCommand();
+            bridge.EnqueueCommand(command);
+            Action<CommandResponse<InfoResponse>> onSuccess = cr =>
+            {
+                var response = cr.Response!;
+                AnsiConsole.MarkupLine($"VICE version number is [bold]{response.Major}.{response.Minor}.{response.Build}.{response.Revision}[/], SVN version is [bold]{response.SvnVersion}[/]");
+            };
+            await AwaitWithTimeoutAsync(command.Response, onSuccess);
+        }
         async Task GetDisplayAsync(CancellationToken ct)
         {
             var command = new DisplayGetCommand(UseVic: true, ImageFormat.Rgb);

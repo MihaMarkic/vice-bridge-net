@@ -152,13 +152,15 @@ namespace Righthand.ViceMonitor.Bridge.Responses
     /// Response to <see cref="Righthand.ViceMonitor.Bridge.Commands.AutoStartCommand"/>.
     /// </summary>
     public record AutoStartResponse(byte ApiVersion, ErrorCode ErrorCode): ViceResponse(ApiVersion, ErrorCode);
-    ///// <summary>
-    ///// Response to <see cref="Righthand.ViceMonitor.Bridge.Commands.InfoCommand"/>.
-    ///// </summary>
-    ///// <param name="ApiVersion"><inheritdoc /></param>
-    ///// <param name="ErrorCode"><inheritdoc /></param>
-    ///// <param name="VersionRCNumber">Version RC number.</param>
-    //public record InfoResponse(byte ApiVersion, ErrorCode ErrorCode, byte VersionRCNumber) : ViceResponse(ApiVersion, ErrorCode);
+    /// <summary>
+    /// Response to <see cref="Righthand.ViceMonitor.Bridge.Commands.InfoCommand"/>.
+    /// </summary>
+    /// <param name="ApiVersion"><inheritdoc /></param>
+    /// <param name="ErrorCode"><inheritdoc /></param>
+    /// <param name="VersionRCNumber">Version RC number.</param>
+    public record InfoResponse(byte ApiVersion, ErrorCode ErrorCode, byte Major, byte Minor, byte Build, byte Revision,
+        uint SvnVersion) 
+        : ViceResponse(ApiVersion, ErrorCode);
 
     /// <summary>
     /// Empty response.

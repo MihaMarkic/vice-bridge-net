@@ -24,7 +24,7 @@ namespace Righthand.ViceMonitor.Bridge.Responses
         }
 
         internal uint GetResponseBodyLength(ReadOnlySpan<byte> header) => BitConverter.ToUInt32(header[2..]);
-        internal (ViceResponse Response, uint RequestId) Build(ReadOnlySpan<byte> header, ReadOnlySpan<byte> buffer)
+        internal (ViceResponse Response, uint RequestId) Build(ReadOnlySpan<byte> header, byte expectedApiVersion, ReadOnlySpan<byte> buffer)
         {
             byte stx = header[0]; // should be STX
             if (stx != Constants.STX)
@@ -32,7 +32,7 @@ namespace Righthand.ViceMonitor.Bridge.Responses
                 throw new Exception("Not starting with STX");
             }
             byte apiVersion = header[1];
-            if (apiVersion != 0x01)
+            if (apiVersion != expectedApiVersion)
             {
                 throw new Exception($"Unknown API version {apiVersion}");
             }
@@ -64,7 +64,7 @@ namespace Righthand.ViceMonitor.Bridge.Responses
                 ResponseType.BanksAvailable     => BuildBanksAvailableResponse(apiVersion, errorCode, buffer),
                 ResponseType.RegistersAvailable => BuildRegistersAvailableResponse(apiVersion, errorCode, buffer),
                 ResponseType.DisplayGet         => BuildDisplayGetResponse(apiVersion, errorCode, buffer),
-                //ResponseType.Info               => BuildInfoResponse(apiVersion, errorCode, buffer),
+                ResponseType.Info               => BuildInfoResponse(apiVersion, errorCode, buffer),
                 ResponseType.Exit               => BuildEmptyResponse(apiVersion, errorCode),
                 ResponseType.Quit               => BuildEmptyResponse(apiVersion, errorCode),
                 ResponseType.Reset              => BuildEmptyResponse(apiVersion, errorCode),
@@ -279,17 +279,24 @@ namespace Righthand.ViceMonitor.Bridge.Responses
                 return new DisplayGetResponse(apiVersion, errorCode, default, default, default, default, default, default, ManagedBuffer.Empty);
             }
         }
-        //internal InfoResponse BuildInfoResponse(byte apiVersion, ErrorCode errorCode, ReadOnlySpan<byte> buffer)
-        //{
-        //    if (errorCode == ErrorCode.OK)
-        //    {
-        //        return new InfoResponse(apiVersion, errorCode, VersionRCNumber: buffer[1]);
-        //    }
-        //    else
-        //    {
-        //        return new InfoResponse(apiVersion, errorCode, VersionRCNumber: default);
-        //    }
-        //}
+        internal InfoResponse BuildInfoResponse(byte apiVersion, ErrorCode errorCode, ReadOnlySpan<byte> buffer)
+        {
+            if (errorCode == ErrorCode.OK)
+            {
+                byte versionSize = buffer[0];
+                if (versionSize == 4)
+                {
+                    byte svnVersionSize = buffer[5];
+                    if (svnVersionSize == 4)
+                    {
+                        uint svnVersion = BitConverter.ToUInt32(buffer[6..]);
+                        return new InfoResponse(apiVersion, errorCode,
+                            Major: buffer[1], Minor: buffer[2], Build: buffer[3], Revision: buffer[4], svnVersion);
+                    }
+                }
+            }
+            return new InfoResponse(apiVersion, errorCode, default, default, default, default, default);
+        }
         internal EmptyViceResponse BuildEmptyResponse(byte apiVersion, ErrorCode errorCode) => new(apiVersion, errorCode);
         internal AutoStartResponse BuildAutoStartResponse(byte apiVersion, ErrorCode errorCode) => new(apiVersion, errorCode);
     }

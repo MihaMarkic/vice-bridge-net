@@ -35,7 +35,7 @@ namespace Righthand.ViceMonitor.Bridge.Test.Commands
                     // header + content
                     Assert.That(length, Is.EqualTo(11 + 8));
                     Assert.That(data[0], Is.EqualTo(Constants.STX));
-                    Assert.That(data[1], Is.EqualTo(0x01));
+                    Assert.That(data[1], Is.EqualTo(ViceCommand.DefaultApiVersion));
                     // body length
                     Assert.That(BitConverter.ToUInt32(data[2..]), Is.EqualTo(8));
                     Assert.That(BitConverter.ToUInt32(data[6..]), Is.EqualTo(0x0123));
