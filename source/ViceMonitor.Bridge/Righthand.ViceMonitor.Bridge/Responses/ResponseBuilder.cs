@@ -262,21 +262,23 @@ namespace Righthand.ViceMonitor.Bridge.Responses
             if (errorCode == ErrorCode.OK)
             {
                 uint infoLength = BitConverter.ToUInt32(buffer);
-                uint mainLength = BitConverter.ToUInt32(buffer[4..]);
-                uint bufferLength = BitConverter.ToUInt32(buffer[8..]);
-                ushort debugWidth = BitConverter.ToUInt16(buffer[12..]);
-                ushort debugHeight = BitConverter.ToUInt16(buffer[14..]);
-                ushort debugOffsetX = BitConverter.ToUInt16(buffer[16..]);
-                ushort debugOffsetY = BitConverter.ToUInt16(buffer[18..]);
-                ushort innerWidth = BitConverter.ToUInt16(buffer[20..]);
-                ushort innerHeight = BitConverter.ToUInt16(buffer[22..]);
+                ushort debugWidth = BitConverter.ToUInt16(buffer[4..]);
+                ushort debugHeight = BitConverter.ToUInt16(buffer[6..]);
+                ushort debugOffsetX = BitConverter.ToUInt16(buffer[8..]);
+                ushort debugOffsetY = BitConverter.ToUInt16(buffer[10..]);
+                ushort innerWidth = BitConverter.ToUInt16(buffer[12..]);
+                ushort innerHeight = BitConverter.ToUInt16(buffer[14..]);
+                byte bitsPerPixel = buffer[16];
+                uint bufferLength = BitConverter.ToUInt32(buffer[17..]);
                 var image = BufferManager.GetBuffer(bufferLength);
                 buffer.Slice((int)infoLength+4, (int)bufferLength).CopyTo(image.Data);
-                return new DisplayGetResponse(apiVersion, errorCode, debugWidth, debugHeight, debugOffsetX, debugOffsetY, innerWidth, innerHeight, image);
+                return new DisplayGetResponse(apiVersion, errorCode, debugWidth, debugHeight, debugOffsetX, debugOffsetY, 
+                    innerWidth, innerHeight, bitsPerPixel, image);
             }
             else
             {
-                return new DisplayGetResponse(apiVersion, errorCode, default, default, default, default, default, default, ManagedBuffer.Empty);
+                return new DisplayGetResponse(apiVersion, errorCode, default, default, default, default, default, default,
+                    default, ManagedBuffer.Empty);
             }
         }
         internal InfoResponse BuildInfoResponse(byte apiVersion, ErrorCode errorCode, ReadOnlySpan<byte> buffer)

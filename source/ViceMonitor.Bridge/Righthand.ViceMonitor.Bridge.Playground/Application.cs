@@ -416,7 +416,7 @@ namespace ModernVICEPDBMonitor.Playground
         }
         async Task GetDisplayAsync(CancellationToken ct)
         {
-            var command = new DisplayGetCommand(UseVic: true, ImageFormat.Rgb);
+            var command = new DisplayGetCommand(UseVic: true, ImageFormat.Indexed);
             bridge.EnqueueCommand(command);
             Action<CommandResponse<DisplayGetResponse>> onSuccess = async commandResponse =>
             {

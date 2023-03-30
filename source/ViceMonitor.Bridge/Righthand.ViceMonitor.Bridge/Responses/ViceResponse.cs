@@ -137,7 +137,8 @@ namespace Righthand.ViceMonitor.Bridge.Responses
     /// Object has to be disposed once it is processed to free memory occupied by <see cref="Image"/>.
     /// </remarks>
     public record DisplayGetResponse(byte ApiVersion, ErrorCode ErrorCode, 
-        ushort DebugWidth, ushort DebugHeight, ushort DebugOffsetX, ushort DebugOffsetY, ushort InnerWidth, ushort InnerHeight, ManagedBuffer? Image)
+        ushort DebugWidth, ushort DebugHeight, ushort DebugOffsetX, ushort DebugOffsetY, ushort InnerWidth, ushort InnerHeight, 
+        byte BitsPerPixel, ManagedBuffer? Image)
         : ViceResponse(ApiVersion, ErrorCode), IDisposable
     {
         /// <summary>
