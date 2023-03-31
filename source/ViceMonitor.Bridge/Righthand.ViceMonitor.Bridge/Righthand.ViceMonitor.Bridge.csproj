@@ -13,12 +13,30 @@
     <PackageTags>Vice</PackageTags>
     <Authors>Miha Markic</Authors>
     <Owners>Miha Markic</Owners>
+    <Version>1.0.0-beta.10</Version>
     <RepositoryUrl>https://github.com/MihaMarkic/vice-bridge-net.git</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PackageProjectUrl>https://github.com/MihaMarkic/vice-bridge-net</PackageProjectUrl>
     <!--<PackageIcon>icon.png</PackageIcon>-->
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
   </PropertyGroup>
+  <Choose>
+    <When Condition=" '$(Configuration)'=='Release' ">
+      <PropertyGroup>
+        <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+      </PropertyGroup>
+    </When>
+  </Choose>
+
+  <!--<Target Name="PreparePackageReleaseNotesFromFile" BeforeTargets="GenerateNuspec">
+    <ReadLinesFromFile File="../RELEASE-NOTES.txt">
+      <Output TaskParameter="Lines" ItemName="ReleaseNoteLines" />
+    </ReadLinesFromFile>
+    <PropertyGroup>
+      <PackageReleaseNotes>@(ReleaseNoteLines, '%0a')</PackageReleaseNotes>
+    </PropertyGroup>
+  </Target>-->
+
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
     <DocumentationFile>bin\Release\net5.0\Righthand.ViceMonitor.Bridge.xml</DocumentationFile>
   </PropertyGroup>
