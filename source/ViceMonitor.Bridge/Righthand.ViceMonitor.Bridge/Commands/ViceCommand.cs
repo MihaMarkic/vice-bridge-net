@@ -5,8 +5,14 @@ using Righthand.ViceMonitor.Bridge.Responses;
 
 namespace Righthand.ViceMonitor.Bridge.Commands
 {
+    /// <summary>
+    /// VICE defaults.
+    /// </summary>
     public static class ViceCommand
     {
+        /// <summary>
+        /// Default API version supported.
+        /// </summary>
         public const int DefaultApiVersion = 0x02;
     }
     /// <inheritdoc cref="IViceCommand"/>

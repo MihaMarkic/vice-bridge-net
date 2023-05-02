@@ -132,6 +132,7 @@ namespace Righthand.ViceMonitor.Bridge.Responses
     /// <param name="DebugOffsetY"></param>
     /// <param name="InnerWidth">Image width</param>
     /// <param name="InnerHeight">Image height</param>
+    /// <param name="BitsPerPixel"></param>
     /// <param name="Image">Image bytes packed into <see cref="ManagedBuffer"/>.</param>
     /// <remarks>
     /// Object has to be disposed once it is processed to free memory occupied by <see cref="Image"/>.
@@ -158,7 +159,11 @@ namespace Righthand.ViceMonitor.Bridge.Responses
     /// </summary>
     /// <param name="ApiVersion"><inheritdoc /></param>
     /// <param name="ErrorCode"><inheritdoc /></param>
-    /// <param name="VersionRCNumber">Version RC number.</param>
+    /// <param name="Major"></param>
+    /// <param name="Minor"></param>
+    /// <param name="Build"></param>
+    /// <param name="Revision"></param>
+    /// <param name="SvnVersion"></param>
     public record InfoResponse(byte ApiVersion, ErrorCode ErrorCode, byte Major, byte Minor, byte Build, byte Revision,
         uint SvnVersion) 
         : ViceResponse(ApiVersion, ErrorCode);
