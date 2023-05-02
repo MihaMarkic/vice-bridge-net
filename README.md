@@ -1,6 +1,6 @@
 # VICE Binary Monitor Bridge for .NET
 
-A cross platform .NET 5 library that implements a bridge for communication with [VICE](https://vice-emu.sourceforge.io/) [binary monitor](https://vice-emu.sourceforge.io/vice_13.html#SEC281).
+A cross platform .NET 6.0/7.0 library that implements a bridge for communication with [VICE](https://vice-emu.sourceforge.io/) [binary monitor](https://vice-emu.sourceforge.io/vice_13.html#SEC281).
 
 [![NuGet](https://img.shields.io/nuget/v/Righthand.Vice.Bridge.svg)](https://www.nuget.org/packages/Righthand.Vice.Bridge)
 
