@@ -9,7 +9,7 @@ A cross platform .NET 5 library that implements a bridge for communication with 
 | [![Build status](https://ci.appveyor.com/api/projects/status/j4mug5wqaqh4ystn/branch/main?svg=true)](https://ci.appveyor.com/project/MihaMarkic/vice-bridge-net/branch/main) | [![Build status](https://ci.appveyor.com/api/projects/status/j4mug5wqaqh4ystn/branch/develop?svg=true)](https://ci.appveyor.com/project/MihaMarkic/vice-bridge-net/branch/develop) |
 
 
-Tested(limited on Windows 10) and built against VICE 3.5.
+Tested(limited on Windows 10) and built against VICE 3.7.
 
 **Important**: At the moment, it works only against API v1, not API v2 which is implemented at least in VICE 3.7.
 

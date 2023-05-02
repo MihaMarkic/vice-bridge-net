@@ -1,18 +1,17 @@
-﻿using System;
-using System.Buffers;
-using System.Collections.Concurrent;
-using System.Collections.Immutable;
-using System.Linq;
-using System.Net.NetworkInformation;
-using System.Net.Sockets;
-using System.Reflection.Metadata;
-using System.Threading;
-using System.Threading.Tasks;
-using Microsoft.Extensions.Logging;
+﻿using Microsoft.Extensions.Logging;
 using Righthand.ViceMonitor.Bridge.Commands;
 using Righthand.ViceMonitor.Bridge.Exceptions;
 using Righthand.ViceMonitor.Bridge.Responses;
 using Righthand.ViceMonitor.Bridge.Services.Abstract;
+using System;
+using System.Buffers;
+using System.Collections.Immutable;
+using System.Linq;
+using System.Net.NetworkInformation;
+using System.Net.Sockets;
+using System.Threading;
+using System.Threading.Tasks;
+using System.Threading.Tasks.Dataflow;
 
 namespace Righthand.ViceMonitor.Bridge.Services.Implementation
 {
@@ -31,7 +30,7 @@ namespace Righthand.ViceMonitor.Bridge.Services.Implementation
         TaskCompletionSource? tcs;
         uint currentRequestId = 0;
         readonly ArrayPool<byte> byteArrayPool = ArrayPool<byte>.Shared;
-        readonly ConcurrentQueue<IViceCommand> commands = new ();
+        BufferBlock<IViceCommand>? commands;
         bool isConnected;
         bool isRunning;
         /// <inheritdoc/>
@@ -90,14 +89,17 @@ namespace Righthand.ViceMonitor.Bridge.Services.Implementation
             if (!IsStarted)
             {
                 logger.LogDebug("Start called");
-                tcs = new TaskCompletionSource();
+                tcs = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+                CancellationToken token;
                 lock (sync)
                 {
                     cts = new CancellationTokenSource();
+                    token = cts.Token;
                 }
+                commands = new BufferBlock<IViceCommand>();
                 var task = Task.Factory.StartNew(
-                    () => StartAsync(port, cts.Token), 
-                    cancellationToken: cts.Token, 
+                    () => StartAsync(port, commands, token), 
+                    cancellationToken: token, 
                     creationOptions: TaskCreationOptions.LongRunning,
                     scheduler: TaskScheduler.Default);
                 loop = task.Unwrap();
@@ -108,13 +110,24 @@ namespace Righthand.ViceMonitor.Bridge.Services.Implementation
             }
         }
         /// <inheritdoc/>
-        public async Task StopAsync()
+        public async Task StopAsync(bool waitForQueueToProcess)
         {
             if (IsStarted)
             {
-                lock (sync)
+                if (waitForQueueToProcess)
                 {
-                    cts?.Cancel();
+                    if (commands is null)
+                    {
+                        throw new Exception("Commands queue is not initialized");
+                    }
+                    commands?.Complete();
+                }
+                else
+                {
+                    lock (sync)
+                    {
+                        cts?.Cancel();
+                    }
                 }
                 var runner = RunnerTask;
                 if (runner is not null)
@@ -123,13 +136,14 @@ namespace Righthand.ViceMonitor.Bridge.Services.Implementation
                 }
             }
         }
-        async Task StartAsync(int port, CancellationToken ct)
+        async Task StartAsync(int port, ISourceBlock<IViceCommand> source, CancellationToken ct)
         {
             Thread.CurrentThread.Name = "Bridge loop";
             try
             {
                 Socket? socket;
-                while (true)
+                bool run = true;
+                while (run)
                 {
                     logger.LogInformation("Starting");
                     socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
@@ -140,7 +154,7 @@ namespace Righthand.ViceMonitor.Bridge.Services.Implementation
                         logger.LogDebug("Port acquired");
                         socket.Connect("localhost", port);
                         logger.LogDebug("Port connected");
-                        while (socket.Connected)
+                        if (socket.Connected)
                         {
                             lock (sync)
                             {
@@ -150,13 +164,14 @@ namespace Righthand.ViceMonitor.Bridge.Services.Implementation
                                     OnConnectedChanged(new ConnectedChangedEventArgs(true));
                                 }
                             }
-                            await LoopAsync(socket, ct);
-                            await Task.Delay(500, ct).ConfigureAwait(false);
+                            await LoopAsync(socket, source, ct);
+                            run = false;
                         }
                     }
                     catch (OperationCanceledException)
                     {
                         logger.LogInformation("Finishing loop");
+                        throw;
                     }
                     catch (SocketDisconnectedException)
                     {
@@ -181,8 +196,13 @@ namespace Righthand.ViceMonitor.Bridge.Services.Implementation
                     }
                 }
             }
+            catch (OperationCanceledException)
+            {
+                logger.LogInformation("Exiting loop due to cancellation");
+            }
             finally
             {
+                commands = null;
                 lock (sync)
                 {
                     cts = null;
@@ -216,7 +236,11 @@ namespace Righthand.ViceMonitor.Bridge.Services.Implementation
         public T EnqueueCommand<T>(T command)
             where T: IViceCommand
         {
-            commands.Enqueue(command);
+            if (commands is null)
+            {
+                throw new Exception("Service is not running");
+            }
+            commands.Post(command);
             return command;
         }
         /// <summary>
@@ -234,54 +258,47 @@ namespace Righthand.ViceMonitor.Bridge.Services.Implementation
             else
                 return true;
         }
-        async Task LoopAsync(Socket socket, CancellationToken ct)
+        async Task LoopAsync(Socket socket, ISourceBlock<IViceCommand> source, CancellationToken ct)
         {
             isRunning = true;
             try
             {
-                while (true)
+                while (await source.OutputAvailableAsync(ct))
                 {
                     if (!CheckIfSocketConnected(socket))
                     {
                         throw new SocketDisconnectedException("Socket is disconnected");
                     }
                     ct.ThrowIfCancellationRequested();
-                    while (commands.TryDequeue(out var command))
+                    var command = await source.ReceiveAsync(ct);
+                    logger.LogDebug($"Will process command {currentRequestId} of {command.GetType().Name} with request id {currentRequestId}");
+                    await SendCommandAsync(socket, currentRequestId, command, ct).ConfigureAwait(false);
+                    (command as IDisposable)?.Dispose();
+                    ViceResponse response;
+                    switch (command)
                     {
-                        logger.LogDebug($"Will process command {currentRequestId} of {command.GetType().Name} with request id {currentRequestId}");
-                        await SendCommandAsync(socket, currentRequestId, command, ct).ConfigureAwait(false);
-                        (command as IDisposable)?.Dispose();
-                        ViceResponse response;
-                        switch (command)
-                        {
-                            // list is a special case that collects matching CheckpointInfoResponses
-                            case CheckpointListCommand listCommand:
-                                var info = ImmutableArray<CheckpointInfoResponse>.Empty;
-                                while ((response = await WaitUntilMatchesResponseAsync(socket, currentRequestId, ct).ConfigureAwait(false)) is CheckpointInfoResponse infoResponse)
-                                {
-                                    info = info.Add(infoResponse);
-                                }
-                                var listResponse = (CheckpointListResponse)response;
-                                response = listResponse with { Info = info };
-                                break;
-                            default:
-                                response = await WaitUntilMatchesResponseAsync(socket, currentRequestId, ct).ConfigureAwait(false);
-                                logger.LogDebug($"Command {currentRequestId} of {command.GetType().Name} got response with result {response.ErrorCode}");
-                                break;
-                        }
-                        command.SetResult(response);
-                        currentRequestId++;
+                        // list is a special case that collects matching CheckpointInfoResponses
+                        case CheckpointListCommand listCommand:
+                            var info = ImmutableArray<CheckpointInfoResponse>.Empty;
+                            while ((response = await WaitUntilMatchesResponseAsync(socket, currentRequestId, ct).ConfigureAwait(false)) is CheckpointInfoResponse infoResponse)
+                            {
+                                info = info.Add(infoResponse);
+                            }
+                            var listResponse = (CheckpointListResponse)response;
+                            response = listResponse with { Info = info };
+                            break;
+                        default:
+                            response = await WaitUntilMatchesResponseAsync(socket, currentRequestId, ct).ConfigureAwait(false);
+                            logger.LogDebug($"Command {currentRequestId} of {command.GetType().Name} got response with result {response.ErrorCode}");
+                            break;
                     }
+                    command.SetResult(response);
+                    currentRequestId++;
                     if (socket.Available > 0)
                     {
                         logger.LogDebug("Will process unbound response");
-                        (var response, _) = await GetResponseAsync(socket, ct).ConfigureAwait(false);
+                        (response, _) = await GetResponseAsync(socket, ct).ConfigureAwait(false);
                         OnViceResponse(new ViceResponseEventArgs(response));
-                    }
-                    else
-                    {
-                        // prevents too intensive pooling
-                        await Task.Delay(500, ct);
                     }
                 }
             }

@@ -44,7 +44,19 @@ namespace ModernVICEPDBMonitor.Playground
                 bridge.ViceResponse += Bridge_ViceResponse;
                 try
                 {
-                    await ShowMenuAsync(ct);
+                    bool run = true;
+                    while (run)
+                    {
+                        try
+                        {
+                            await ShowMenuAsync(ct);
+                            run = false;
+                        }
+                        catch (Exception ex)
+                        {
+                            AnsiConsole.WriteException(ex);
+                        }
+                    }
                 }
                 finally
                 {
@@ -156,7 +168,7 @@ namespace ModernVICEPDBMonitor.Playground
                         await StartSampleAsync(ct);
                         break;
                     case "stop":
-                        await StopBridgeAsync(ct);
+                        await StopBridgeAsync(waitForQueueToProcess: false, ct);
                         break;
                     case "q":
                         quit = true;
@@ -236,9 +248,9 @@ namespace ModernVICEPDBMonitor.Playground
             AnsiConsole.MarkupLine("[red]Response timed out[/]");
             return default;
         }
-        async Task StopBridgeAsync(CancellationToken ct)
+        async Task StopBridgeAsync(bool waitForQueueToProcess, CancellationToken ct)
         {
-            var stopTask = bridge.StopAsync();
+            var stopTask = bridge.StopAsync(waitForQueueToProcess);
             bool result = (await Task.WhenAny(stopTask, Task.Delay(5000, ct)) == stopTask);
             if (!result)
             {

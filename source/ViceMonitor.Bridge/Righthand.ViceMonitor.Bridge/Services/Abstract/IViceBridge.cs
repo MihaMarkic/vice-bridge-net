@@ -1,9 +1,8 @@
-﻿using System;
-using System.Net;
+﻿using Righthand.ViceMonitor.Bridge.Commands;
+using Righthand.ViceMonitor.Bridge.Services.Implementation;
+using System;
 using System.Threading;
 using System.Threading.Tasks;
-using Righthand.ViceMonitor.Bridge.Commands;
-using Righthand.ViceMonitor.Bridge.Services.Implementation;
 
 namespace Righthand.ViceMonitor.Bridge.Services.Abstract
 {
@@ -36,8 +35,11 @@ namespace Righthand.ViceMonitor.Bridge.Services.Abstract
         /// <summary>
         /// Stops the bridge.
         /// </summary>
+        /// <param name="waitForQueueToProcess">
+        /// When true, bridge will process all commands in queue and then exit, cancel processing otherwise.
+        /// </param>
         /// <returns></returns>
-        Task StopAsync();
+        Task StopAsync(bool waitForQueueToProcess);
         /// <summary>
         /// Enqueues command for sending
         /// </summary>
