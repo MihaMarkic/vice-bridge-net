@@ -225,7 +225,7 @@ namespace Righthand.ViceMonitor.Bridge.Services.Implementation
                 {
                     if (requestId != Constants.BroadcastRequestId)
                     {
-                        logger.LogWarning($"Got unmatched response with non broadcast request id {requestId:x8}");
+                        logger.LogDebug($"Got unmatched response with non broadcast request id {requestId:x8}");
                     }
                     OnViceResponse(new ViceResponseEventArgs(response));
                 }
@@ -263,41 +263,48 @@ namespace Righthand.ViceMonitor.Bridge.Services.Implementation
             isRunning = true;
             try
             {
-                while (await source.OutputAvailableAsync(ct))
+                while (true)
                 {
+                    var commandAvailableTask = source.OutputAvailableAsync(ct);
+                    var dataAvailableTask = socket.WaitForDataAsync(ct);
+                    var task = await Task.WhenAny(commandAvailableTask, dataAvailableTask).ConfigureAwait(false);
                     if (!CheckIfSocketConnected(socket))
                     {
                         throw new SocketDisconnectedException("Socket is disconnected");
                     }
                     ct.ThrowIfCancellationRequested();
-                    var command = await source.ReceiveAsync(ct);
-                    logger.LogDebug($"Will process command {currentRequestId} of {command.GetType().Name} with request id {currentRequestId}");
-                    await SendCommandAsync(socket, currentRequestId, command, ct).ConfigureAwait(false);
-                    (command as IDisposable)?.Dispose();
-                    ViceResponse response;
-                    switch (command)
+                    if (task == commandAvailableTask)
                     {
-                        // list is a special case that collects matching CheckpointInfoResponses
-                        case CheckpointListCommand listCommand:
-                            var info = ImmutableArray<CheckpointInfoResponse>.Empty;
-                            while ((response = await WaitUntilMatchesResponseAsync(socket, currentRequestId, ct).ConfigureAwait(false)) is CheckpointInfoResponse infoResponse)
-                            {
-                                info = info.Add(infoResponse);
-                            }
-                            var listResponse = (CheckpointListResponse)response;
-                            response = listResponse with { Info = info };
-                            break;
-                        default:
-                            response = await WaitUntilMatchesResponseAsync(socket, currentRequestId, ct).ConfigureAwait(false);
-                            logger.LogDebug($"Command {currentRequestId} of {command.GetType().Name} got response with result {response.ErrorCode}");
-                            break;
+                        var command = await source.ReceiveAsync(ct);
+                        logger.LogDebug($"Will process command {currentRequestId} of {command.GetType().Name} with request id {currentRequestId}");
+                        await SendCommandAsync(socket, currentRequestId, command, ct).ConfigureAwait(false);
+                        (command as IDisposable)?.Dispose();
+                        ViceResponse response;
+                        switch (command)
+                        {
+                            // list is a special case that collects matching CheckpointInfoResponses
+                            case CheckpointListCommand listCommand:
+                                var info = ImmutableArray<CheckpointInfoResponse>.Empty;
+                                while ((response = await WaitUntilMatchesResponseAsync(socket, currentRequestId, ct).ConfigureAwait(false)) is CheckpointInfoResponse infoResponse)
+                                {
+                                    info = info.Add(infoResponse);
+                                }
+                                var listResponse = (CheckpointListResponse)response;
+                                response = listResponse with { Info = info };
+                                break;
+                            default:
+                                response = await WaitUntilMatchesResponseAsync(socket, currentRequestId, ct).ConfigureAwait(false);
+                                logger.LogDebug($"Command {currentRequestId} of {command.GetType().Name} got response with result {response.ErrorCode}");
+                                break;
+                        }
+                        command.SetResult(response);
+                        currentRequestId++;
+                        continue;
                     }
-                    command.SetResult(response);
-                    currentRequestId++;
                     if (socket.Available > 0)
                     {
                         logger.LogDebug("Will process unbound response");
-                        (response, _) = await GetResponseAsync(socket, ct).ConfigureAwait(false);
+                        (var response, _) = await GetResponseAsync(socket, ct).ConfigureAwait(false);
                         OnViceResponse(new ViceResponseEventArgs(response));
                     }
                 }
