@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net6.0</TargetFramework>
+    <TargetFrameworks>net6.0;net7.0</TargetFrameworks>
     <Nullable>enable</Nullable>
     <IncludeSymbols>true</IncludeSymbols>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
@@ -13,12 +13,13 @@
     <PackageTags>Vice</PackageTags>
     <Authors>Miha Markic</Authors>
     <Owners>Miha Markic</Owners>
-    <Version>1.0.0-beta.11</Version>
+    <Version>1.0.0-beta.12</Version>
     <RepositoryUrl>https://github.com/MihaMarkic/vice-bridge-net.git</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PackageProjectUrl>https://github.com/MihaMarkic/vice-bridge-net</PackageProjectUrl>
     <!--<PackageIcon>icon.png</PackageIcon>-->
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <GenerateDocumentationFile>True</GenerateDocumentationFile>
   </PropertyGroup>
   <Choose>
     <When Condition=" '$(Configuration)'=='Release' ">
@@ -37,9 +38,9 @@
     </PropertyGroup>
   </Target>-->
 
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
+  <!--<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
     <DocumentationFile>bin\Release\net5.0\Righthand.ViceMonitor.Bridge.xml</DocumentationFile>
-  </PropertyGroup>
+  </PropertyGroup>-->
   <ItemGroup>
     <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleToAttribute">
       <_Parameter1>$(AssemblyName).Test</_Parameter1>
