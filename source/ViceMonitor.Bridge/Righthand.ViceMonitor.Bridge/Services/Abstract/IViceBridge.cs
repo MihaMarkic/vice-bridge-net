@@ -27,6 +27,7 @@ namespace Righthand.ViceMonitor.Bridge.Services.Abstract
         /// Gets connection to VICE status.
         /// </summary>
         bool IsConnected { get; }
+        IPerformanceProfiler PerformanceProfiler { get; }
         /// <summary>
         /// Starts the bridge.
         /// </summary>

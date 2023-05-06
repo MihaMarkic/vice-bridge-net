@@ -1,20 +1,18 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Collections.Immutable;
-using System.Diagnostics;
-using System.IO;
-using System.Linq;
-using System.Text.RegularExpressions;
-using System.Threading;
-using System.Threading.Tasks;
-using Microsoft.Extensions.Logging;
-using NLog.LayoutRenderers.Wrappers;
+﻿using Microsoft.Extensions.Logging;
 using Righthand.ViceMonitor.Bridge;
 using Righthand.ViceMonitor.Bridge.Commands;
 using Righthand.ViceMonitor.Bridge.Responses;
 using Righthand.ViceMonitor.Bridge.Services.Abstract;
 using Righthand.ViceMonitor.Bridge.Shared;
 using Spectre.Console;
+using System;
+using System.Collections.Generic;
+using System.Collections.Immutable;
+using System.Diagnostics;
+using System.IO;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace ModernVICEPDBMonitor.Playground
 {
@@ -23,6 +21,7 @@ namespace ModernVICEPDBMonitor.Playground
         readonly ILogger logger;
         readonly IViceBridge bridge;
         ImmutableDictionary<byte, FullRegisterItem> registers;
+        uint? tracepointNumber;
         public Application(ILogger<Application> logger, IViceBridge bridge)
         {
             this.logger = logger;
@@ -84,6 +83,12 @@ namespace ModernVICEPDBMonitor.Playground
                 case RegistersResponse registers:
                     OutputRegisters(registers.Items);
                     break;
+                case StoppedResponse:
+                    if (tracepointNumber.HasValue)
+                    {
+                        bridge.EnqueueCommand(new ExitCommand());
+                    }
+                    break;
             }
         }
 
@@ -133,6 +138,9 @@ namespace ModernVICEPDBMonitor.Playground
                         break;
                     case "cs":
                         await CheckpointSetAsync(ct);
+                        break;
+                    case "ts":
+                        await TracepointSetAsync(ct);
                         break;
                     case "mg":
                         await MemoryGetAsync(ct);
@@ -340,7 +348,17 @@ namespace ModernVICEPDBMonitor.Playground
             var setCommand = bridge.EnqueueCommand(new CheckpointSetCommand(0x1000, 0x2000, StopWhenHit: true, Enabled: true,
                CpuOperation: CpuOperation.Load, Temporary: true));
             await AwaitWithTimeoutAsync(setCommand.Response, response => 
-                AnsiConsole.MarkupLine($"Set response: {response.ErrorCode} with Checkpoint Number {response.Response?.CheckpointNumber}"));
+                AnsiConsole.MarkupLine($"Checkpoint set response: {response.ErrorCode} with Checkpoint Number {response.Response?.CheckpointNumber}"));
+        }
+        async Task TracepointSetAsync(CancellationToken ct)
+        {
+            var setCommand = bridge.EnqueueCommand(new CheckpointSetCommand(0xd4fc, 0xd4fc, StopWhenHit: true, Enabled: true,
+               CpuOperation: CpuOperation.Store, Temporary: false));
+            await AwaitWithTimeoutAsync(setCommand.Response, response =>
+            {
+                tracepointNumber = response.Response?.CheckpointNumber;
+                AnsiConsole.MarkupLine($"Tracepoint set response: {response.ErrorCode} with Checkpoint Number {response.Response?.CheckpointNumber}");
+            });
         }
         async Task CheckpointDeleteAsync(uint checkpointNumber, CancellationToken ct)
         {

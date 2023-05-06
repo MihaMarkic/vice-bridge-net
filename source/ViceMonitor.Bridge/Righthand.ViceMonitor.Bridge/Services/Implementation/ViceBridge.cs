@@ -42,14 +42,21 @@ namespace Righthand.ViceMonitor.Bridge.Services.Implementation
         /// <inheritdoc />
         public event EventHandler<ConnectedChangedEventArgs>? ConnectedChanged;
         /// <summary>
+        /// Log of performance data.
+        /// </summary>
+        public IPerformanceProfiler PerformanceProfiler { get; }
+        /// <summary>
         /// Creates an instance of <see cref="ViceBridge"/>.
         /// </summary>
         /// <param name="logger"></param>
         /// <param name="responseBuilder">Type responsible for building response types.</param>
-        public ViceBridge(ILogger<ViceBridge> logger, ResponseBuilder responseBuilder)
+        /// <param name="performanceProfiler"></param>
+        public ViceBridge(ILogger<ViceBridge> logger, ResponseBuilder responseBuilder, 
+            IPerformanceProfiler performanceProfiler)
         {
             this.logger = logger;
             this.responseBuilder = responseBuilder;
+            this.PerformanceProfiler = performanceProfiler;
         }
         /// <inheritdoc />
         /// <threadsafety>Property is thread safe.</threadsafety>
@@ -218,11 +225,13 @@ namespace Righthand.ViceMonitor.Bridge.Services.Implementation
                 (var response, var requestId) = await GetResponseAsync(socket, ct).ConfigureAwait(false);
                 if (requestId == targetRequestId)
                 {
+                    PerformanceProfiler.Add(new ResponseReadEvent(response.GetType(), IsNested: false, PerformanceProfiler.Ticks));
                     logger.LogDebug($"Found matching request id {targetRequestId}");
                     return response;
                 }
                 else
                 {
+                    PerformanceProfiler.Add(new ResponseReadEvent(response.GetType(), IsNested: true, PerformanceProfiler.Ticks));
                     if (requestId != Constants.BroadcastRequestId)
                     {
                         logger.LogDebug($"Got unmatched response with non broadcast request id {requestId:x8}");
@@ -267,17 +276,18 @@ namespace Righthand.ViceMonitor.Bridge.Services.Implementation
                 {
                     var commandAvailableTask = source.OutputAvailableAsync(ct);
                     var dataAvailableTask = socket.WaitForDataAsync(ct);
+                    PerformanceProfiler.Add(new StartListeningEvent(PerformanceProfiler.Ticks));
                     var task = await Task.WhenAny(commandAvailableTask, dataAvailableTask).ConfigureAwait(false);
-                    if (!CheckIfSocketConnected(socket))
-                    {
-                        throw new SocketDisconnectedException("Socket is disconnected");
-                    }
+                    PerformanceProfiler.Add(new DataAvailableEvent(
+                        task == commandAvailableTask ? PerformanceDataType.Command: PerformanceDataType.Response, 
+                        PerformanceProfiler.Ticks));
                     ct.ThrowIfCancellationRequested();
                     if (task == commandAvailableTask)
                     {
                         var command = await source.ReceiveAsync(ct);
                         logger.LogDebug($"Will process command {currentRequestId} of {command.GetType().Name} with request id {currentRequestId}");
                         await SendCommandAsync(socket, currentRequestId, command, ct).ConfigureAwait(false);
+                        PerformanceProfiler.Add(new CommandSentEvent(command.GetType(), PerformanceProfiler.Ticks));
                         (command as IDisposable)?.Dispose();
                         ViceResponse response;
                         switch (command)
@@ -299,12 +309,15 @@ namespace Righthand.ViceMonitor.Bridge.Services.Implementation
                         }
                         command.SetResult(response);
                         currentRequestId++;
+                        PerformanceProfiler.Add(new CommandCompletedEvent(command.GetType(), PerformanceProfiler.Ticks));
                         continue;
                     }
-                    if (socket.Available > 0)
+                    while (socket.Available > 0)
                     {
+                        PerformanceProfiler.Add(new DataAvailableEvent(PerformanceDataType.Response, PerformanceProfiler.Ticks));
                         logger.LogDebug("Will process unbound response");
                         (var response, _) = await GetResponseAsync(socket, ct).ConfigureAwait(false);
+                        PerformanceProfiler.Add(new ResponseReadEvent(response.GetType(), IsNested: false, PerformanceProfiler.Ticks));
                         OnViceResponse(new ViceResponseEventArgs(response));
                     }
                 }
@@ -361,7 +374,7 @@ namespace Righthand.ViceMonitor.Bridge.Services.Implementation
                 buffer.Dispose();
             }
         }
-        static async Task ReadByteArrayAsync(Socket socket, ManagedBuffer buffer, CancellationToken ct = default)
+        async Task ReadByteArrayAsync(Socket socket, ManagedBuffer buffer, CancellationToken ct = default)
         {
             int i = 0;
             var dataSpan = buffer.Data.AsMemory();
@@ -371,21 +384,26 @@ namespace Righthand.ViceMonitor.Bridge.Services.Implementation
             }
             while (i < buffer.Size);
         }
-        static async Task SendByteArrayAsync(Socket socket, byte[] data, int length, CancellationToken ct)
+        async Task SendByteArrayAsync(Socket socket, byte[] data, int length, CancellationToken ct)
         {
             int i = 0;
             var dataSpan = data.AsMemory();
             do
             {
+                int passes = 0;
+                int delays = 0;
                 int sent = await socket.SendAsync(dataSpan[i..length], SocketFlags.None, ct);
                 if (sent > 0)
                 {
+                    passes++;
                     i += sent;
                 }
                 else
                 {
+                    delays++;
                     await Task.Delay(10, ct);
                 }
+                PerformanceProfiler.Add(new RawSendEvent(passes, delays, PerformanceProfiler.Ticks));
                 ct.ThrowIfCancellationRequested();
             }
             while (i < length);

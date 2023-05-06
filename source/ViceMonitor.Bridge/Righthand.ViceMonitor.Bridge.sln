@@ -24,6 +24,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 		..\..\recipe.cake = ..\..\recipe.cake
 	EndProjectSection
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Righthand.ViceMonitor.Bridge.Trace", "Righthand.ViceMonitor.Bridge.Trace\Righthand.ViceMonitor.Bridge.Trace.csproj", "{2C853350-C108-4A30-9682-C7CD55C9BEDC}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -42,6 +44,10 @@ Global
 		{622F0DCB-9236-403C-A91D-1D5818FCEB72}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{622F0DCB-9236-403C-A91D-1D5818FCEB72}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{622F0DCB-9236-403C-A91D-1D5818FCEB72}.Release|Any CPU.Build.0 = Release|Any CPU
+		{2C853350-C108-4A30-9682-C7CD55C9BEDC}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2C853350-C108-4A30-9682-C7CD55C9BEDC}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2C853350-C108-4A30-9682-C7CD55C9BEDC}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2C853350-C108-4A30-9682-C7CD55C9BEDC}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
