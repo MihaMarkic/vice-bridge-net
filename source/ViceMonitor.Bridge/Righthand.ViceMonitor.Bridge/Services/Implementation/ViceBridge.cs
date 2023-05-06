@@ -225,13 +225,19 @@ namespace Righthand.ViceMonitor.Bridge.Services.Implementation
                 (var response, var requestId) = await GetResponseAsync(socket, ct).ConfigureAwait(false);
                 if (requestId == targetRequestId)
                 {
-                    PerformanceProfiler.Add(new ResponseReadEvent(response.GetType(), IsNested: false, PerformanceProfiler.Ticks));
+                    if (PerformanceProfiler.IsEnabled)
+                    {
+                        PerformanceProfiler.Add(new ResponseReadEvent(response.GetType(), IsNested: false, PerformanceProfiler.Ticks));
+                    }
                     logger.LogDebug($"Found matching request id {targetRequestId}");
                     return response;
                 }
                 else
                 {
-                    PerformanceProfiler.Add(new ResponseReadEvent(response.GetType(), IsNested: true, PerformanceProfiler.Ticks));
+                    if (PerformanceProfiler.IsEnabled)
+                    {
+                        PerformanceProfiler.Add(new ResponseReadEvent(response.GetType(), IsNested: true, PerformanceProfiler.Ticks));
+                    }
                     if (requestId != Constants.BroadcastRequestId)
                     {
                         logger.LogDebug($"Got unmatched response with non broadcast request id {requestId:x8}");
@@ -276,18 +282,27 @@ namespace Righthand.ViceMonitor.Bridge.Services.Implementation
                 {
                     var commandAvailableTask = source.OutputAvailableAsync(ct);
                     var dataAvailableTask = socket.WaitForDataAsync(ct);
-                    PerformanceProfiler.Add(new StartListeningEvent(PerformanceProfiler.Ticks));
+                    if (PerformanceProfiler.IsEnabled)
+                    {
+                        PerformanceProfiler.Add(new StartListeningEvent(PerformanceProfiler.Ticks));
+                    }
                     var task = await Task.WhenAny(commandAvailableTask, dataAvailableTask).ConfigureAwait(false);
-                    PerformanceProfiler.Add(new DataAvailableEvent(
-                        task == commandAvailableTask ? PerformanceDataType.Command: PerformanceDataType.Response, 
+                    if (PerformanceProfiler.IsEnabled)
+                    {
+                        PerformanceProfiler.Add(new DataAvailableEvent(
+                        task == commandAvailableTask ? PerformanceDataType.Command : PerformanceDataType.Response,
                         PerformanceProfiler.Ticks));
+                    }
                     ct.ThrowIfCancellationRequested();
                     if (task == commandAvailableTask)
                     {
                         var command = await source.ReceiveAsync(ct);
                         logger.LogDebug($"Will process command {currentRequestId} of {command.GetType().Name} with request id {currentRequestId}");
                         await SendCommandAsync(socket, currentRequestId, command, ct).ConfigureAwait(false);
-                        PerformanceProfiler.Add(new CommandSentEvent(command.GetType(), PerformanceProfiler.Ticks));
+                        if (PerformanceProfiler.IsEnabled)
+                        {
+                            PerformanceProfiler.Add(new CommandSentEvent(command.GetType(), PerformanceProfiler.Ticks));
+                        }
                         (command as IDisposable)?.Dispose();
                         ViceResponse response;
                         switch (command)
@@ -309,15 +324,24 @@ namespace Righthand.ViceMonitor.Bridge.Services.Implementation
                         }
                         command.SetResult(response);
                         currentRequestId++;
-                        PerformanceProfiler.Add(new CommandCompletedEvent(command.GetType(), PerformanceProfiler.Ticks));
+                        if (PerformanceProfiler.IsEnabled)
+                        {
+                            PerformanceProfiler.Add(new CommandCompletedEvent(command.GetType(), PerformanceProfiler.Ticks));
+                        }
                         continue;
                     }
                     while (socket.Available > 0)
                     {
-                        PerformanceProfiler.Add(new DataAvailableEvent(PerformanceDataType.Response, PerformanceProfiler.Ticks));
+                        if (PerformanceProfiler.IsEnabled)
+                        {
+                            PerformanceProfiler.Add(new DataAvailableEvent(PerformanceDataType.Response, PerformanceProfiler.Ticks));
+                        }
                         logger.LogDebug("Will process unbound response");
                         (var response, _) = await GetResponseAsync(socket, ct).ConfigureAwait(false);
-                        PerformanceProfiler.Add(new ResponseReadEvent(response.GetType(), IsNested: false, PerformanceProfiler.Ticks));
+                        if (PerformanceProfiler.IsEnabled)
+                        {
+                            PerformanceProfiler.Add(new ResponseReadEvent(response.GetType(), IsNested: false, PerformanceProfiler.Ticks));
+                        }
                         OnViceResponse(new ViceResponseEventArgs(response));
                     }
                 }
@@ -403,7 +427,10 @@ namespace Righthand.ViceMonitor.Bridge.Services.Implementation
                     delays++;
                     await Task.Delay(10, ct);
                 }
-                PerformanceProfiler.Add(new RawSendEvent(passes, delays, PerformanceProfiler.Ticks));
+                if (PerformanceProfiler.IsEnabled)
+                {
+                    PerformanceProfiler.Add(new RawSendEvent(passes, delays, PerformanceProfiler.Ticks));
+                }
                 ct.ThrowIfCancellationRequested();
             }
             while (i < length);
