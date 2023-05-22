@@ -96,7 +96,7 @@
         /// <summary>
         /// MON_RESPONSE_EXIT
         /// </summary>
-        Exit                                = 0x88,
+        Exit                                = 0xaa,
         /// <summary>
         /// MON_RESPONSE_QUIT
         /// </summary>
