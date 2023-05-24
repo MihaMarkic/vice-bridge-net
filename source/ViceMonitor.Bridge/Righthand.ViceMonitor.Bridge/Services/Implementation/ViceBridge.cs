@@ -217,10 +217,22 @@ namespace Righthand.ViceMonitor.Bridge.Services.Implementation
                 }
             }
         }
+        /// <summary>
+        /// Defines last response statuses of interest.
+        /// </summary>
         public enum LastStatusResponse
         {
+            /// <summary>
+            /// Stopped execution.
+            /// </summary>
             Stopped,
+            /// <summary>
+            /// Resumed execution.
+            /// </summary>
             Resumed,
+            /// <summary>
+            /// No other status from the list was received.
+            /// </summary>
             None
         }
         async Task<(ViceResponse Response, LastStatusResponse LastStatusResponse)> WaitUntilMatchesResponseAsync(Socket socket, uint targetRequestId, CancellationToken ct)

@@ -277,7 +277,7 @@ namespace ModernVICEPDBMonitor.Playground
             var listCommand = new CheckpointListCommand();
             bridge.EnqueueCommand(listCommand);
             bool isRunning = true;
-            EventHandler<ViceResponseEventArgs> response = async (sender, r) =>
+            EventHandler<ViceResponseEventArgs> response = (sender, r) =>
             {
                 switch (r.Response)
                 {
