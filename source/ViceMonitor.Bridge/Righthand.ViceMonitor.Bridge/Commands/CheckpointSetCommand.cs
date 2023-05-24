@@ -1,5 +1,6 @@
 ﻿using Righthand.ViceMonitor.Bridge.Responses;
 using System;
+using System.Collections.Immutable;
 
 namespace Righthand.ViceMonitor.Bridge.Commands
 {
@@ -27,6 +28,16 @@ namespace Righthand.ViceMonitor.Bridge.Commands
             buffer[5] = Enabled.AsByte();
             buffer[6] = (byte)CpuOperation;
             buffer[7] = Temporary.AsByte();
+        }
+        /// <inheritdoc />
+        public override ImmutableArray<string> CollectErrors()
+        {
+            var result = base.CollectErrors();
+            if (EndAddress < StartAddress)
+            {
+                result = result.Add($"EndAddress {EndAddress:X4} is lower than StartAddress {StartAddress:X4}");
+            }
+            return result;
         }
     }
 }

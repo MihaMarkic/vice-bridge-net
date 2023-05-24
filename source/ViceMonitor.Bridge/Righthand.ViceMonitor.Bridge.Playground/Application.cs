@@ -22,6 +22,8 @@ namespace ModernVICEPDBMonitor.Playground
         readonly IViceBridge bridge;
         ImmutableDictionary<byte, FullRegisterItem> registers;
         uint? tracepointNumber;
+        bool isViceStopped;
+        readonly object sync = new();
         public Application(ILogger<Application> logger, IViceBridge bridge)
         {
             this.logger = logger;
@@ -84,9 +86,19 @@ namespace ModernVICEPDBMonitor.Playground
                     OutputRegisters(registers.Items);
                     break;
                 case StoppedResponse:
+                    lock (sync)
+                    {
+                        isViceStopped = true;
+                    }
                     if (tracepointNumber.HasValue)
                     {
                         bridge.EnqueueCommand(new ExitCommand());
+                    }
+                    break;
+                case ResumedResponse:
+                    lock (sync)
+                    {
+                        isViceStopped = false;
                     }
                     break;
             }
@@ -113,6 +125,8 @@ namespace ModernVICEPDBMonitor.Playground
                 .Add(new KeyValuePair<string, string>("start", "Start bridge"))
                 .Add(new KeyValuePair<string, string>("stop", "Stop bridge"))
                 .Add(new KeyValuePair<string, string>("l", "Loads sample tiny.o"))
+                .Add(new KeyValuePair<string, string>("nc", "Nested call"))
+                .Add(new KeyValuePair<string, string>("ros", "Resume On Stop"))
                 .Add(new KeyValuePair<string, string>("s", "Starts loaded sample tiny.o"));
             bool quit = false;
             while (!quit)
@@ -121,6 +135,8 @@ namespace ModernVICEPDBMonitor.Playground
                 {
                     AnsiConsole.MarkupLine($"[bold]{pair.Key}[/]  ... {pair.Value}");
                 }
+                string viceStatus = isViceStopped ? "[red]stopped[/]" : "[green]running[/]";
+                AnsiConsole.MarkupLine($"Vice is {viceStatus}");
                 AnsiConsole.MarkupLine("Type [bold]q[/] to end");
                 string? command = Console.ReadLine();
                 switch (command)
@@ -174,6 +190,12 @@ namespace ModernVICEPDBMonitor.Playground
                         break;
                     case "s":
                         await StartSampleAsync(ct);
+                        break;
+                    case "nc":
+                        await NestedCallAsync(ct);
+                        break;
+                    case "ros":
+                        await ResumeOnStopAsync(ct);
                         break;
                     case "stop":
                         await StopBridgeAsync(waitForQueueToProcess: false, ct);
@@ -236,6 +258,68 @@ namespace ModernVICEPDBMonitor.Playground
                 }
             }
         }
+        internal async Task ResumeOnStopAsync(CancellationToken ct)
+        {
+            //var command = bridge.EnqueueCommand(new RegistersGetCommand(MemSpace.MainMemory), resumeOnStopped: true);
+            var command = bridge.EnqueueCommand(new CheckpointSetCommand(2214, 2213, StopWhenHit: true, Enabled: true,
+                CpuOperation: CpuOperation.Load, Temporary: false), true);
+            await AwaitWithTimeoutAsync(command.Response, cr => {
+                string viceStatus;
+                lock (sync)
+                {
+                    viceStatus = isViceStopped ? "[red]stopped[/]" : "[green]running[/]";
+                }
+                AnsiConsole.MarkupLine($"Got registers, status is {viceStatus}, should resume VICE"); 
+            });
+        }
+        internal async Task NestedCallAsync(CancellationToken ct)
+        {
+            var listCommand = new CheckpointListCommand();
+            bridge.EnqueueCommand(listCommand);
+            bool isRunning = true;
+            EventHandler<ViceResponseEventArgs> response = async (sender, r) =>
+            {
+                switch (r.Response)
+                {
+                    case RegistersResponse:
+                        AnsiConsole.MarkupLine("Got nested RegistersResponse, enqueuing RegistersAvailableCommand");
+                        var availableRegistersCommand = new RegistersAvailableCommand(MemSpace.MainMemory);
+                        bridge.EnqueueCommand(availableRegistersCommand);
+                        _ = AwaitWithTimeoutAsync(availableRegistersCommand.Response, r =>
+                        {
+                            AnsiConsole.MarkupLine("Got RegistersAvailableCommand response");
+                            if (!isRunning)
+                            {
+                                string status = isRunning ? "[green]running[/]" : "[red]stopped[/]";
+                                AnsiConsole.MarkupLine($"Nested [yellow]resuming[/] on {status}");
+                                bridge.EnqueueCommand(new ExitCommand());
+                            }
+                        });
+                        break;
+                    case StoppedResponse:
+                        isRunning = false;
+                        AnsiConsole.MarkupLine("[red]stopped[/]");
+                        break;
+                    case ResumedResponse:
+                        isRunning = true;
+                        AnsiConsole.MarkupLine("[green]resumed[/]");
+                        break;
+                }
+            };
+            bridge.ViceResponse += response;
+            await AwaitWithTimeoutAsync(listCommand.Response, r => 
+            {
+                bridge.ViceResponse -= response;
+                AnsiConsole.MarkupLine("Done");
+                if (!isRunning)
+                {
+                    string status = isRunning ? "[green]running[/]" : "[red]stopped[/]";
+                    AnsiConsole.MarkupLine($"Root [yellow]resuming[/] on {status}");
+                    bridge.EnqueueCommand(new ExitCommand());
+                }
+            });
+        }
+
         internal async Task<CommandResponse<TResponse>?> AwaitWithTimeoutAsync<TResponse>(Task<CommandResponse<TResponse>> task, Action<CommandResponse<TResponse>> textOnSuccess)
             where TResponse: ViceResponse
         {

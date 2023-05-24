@@ -1,4 +1,5 @@
 ﻿using Righthand.ViceMonitor.Bridge.Commands;
+using Righthand.ViceMonitor.Bridge.Responses;
 using Righthand.ViceMonitor.Bridge.Services.Implementation;
 using System;
 using System.Threading;
@@ -46,8 +47,10 @@ namespace Righthand.ViceMonitor.Bridge.Services.Abstract
         /// </summary>
         /// <typeparam name="T">Command type</typeparam>
         /// <param name="command">An instance of <see cref="ViceCommand{TResponse}"/> subtype to enqueue.</param>
+        /// <param name="resumeOnStopped">When true, ExitCommand is sent if <see cref="StoppedResponse"/> is received
+        /// during command execution.</param>
         /// <returns>An instance of passed in command.</returns>
-        T EnqueueCommand<T>(T command)
+        T EnqueueCommand<T>(T command, bool resumeOnStopped = false)
             where T : IViceCommand;
         /// <summary>
         /// Occurs when an unbound event arrived.

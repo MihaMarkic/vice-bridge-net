@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Immutable;
 using System.Text;
 using System.Threading.Tasks;
 using Righthand.ViceMonitor.Bridge.Responses;
@@ -60,6 +61,11 @@ namespace Righthand.ViceMonitor.Bridge.Commands
                 tcs.SetResult(new CommandResponse<TResponse>(response.ErrorCode));
             }
         }
+        /// <inheritdoc />
+        public void SetException(Exception ex)
+        {
+            tcs.SetException(ex);
+        }
         /// <inheritdoc cref="IViceCommand.GetBinaryData(uint)"/>
         public (ManagedBuffer Buffer, uint Length) GetBinaryData(uint requestId)
         {
@@ -87,6 +93,8 @@ namespace Righthand.ViceMonitor.Bridge.Commands
             encoder.Convert(text, buffer, flush: true, out _, out int bytesUsed, out _);
             return bytesUsed;
         }
+        ///<inheritdoc />
+        public virtual ImmutableArray<string> CollectErrors() => ImmutableArray<string>.Empty;
     }
     /// <summary>
     /// Defines a command without parameters.
