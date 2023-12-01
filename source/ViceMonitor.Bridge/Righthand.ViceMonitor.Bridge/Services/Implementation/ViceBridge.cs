@@ -42,6 +42,7 @@ namespace Righthand.ViceMonitor.Bridge.Services.Implementation
         /// Log of performance data.
         /// </summary>
         public IPerformanceProfiler PerformanceProfiler { get; }
+        public IMessagesHistory MessagesHistory { get; }
         /// <summary>
         /// Creates an instance of <see cref="ViceBridge"/>.
         /// </summary>
@@ -49,11 +50,12 @@ namespace Righthand.ViceMonitor.Bridge.Services.Implementation
         /// <param name="responseBuilder">Type responsible for building response types.</param>
         /// <param name="performanceProfiler"></param>
         public ViceBridge(ILogger<ViceBridge> logger, ResponseBuilder responseBuilder, 
-            IPerformanceProfiler performanceProfiler)
+            IPerformanceProfiler performanceProfiler, IMessagesHistory messagesHistory)
         {
             this.logger = logger;
             this.responseBuilder = responseBuilder;
             this.PerformanceProfiler = performanceProfiler;
+            this.MessagesHistory = messagesHistory;
         }
         /// <inheritdoc />
         /// <threadsafety>Property is thread safe.</threadsafety>
@@ -261,6 +263,7 @@ namespace Righthand.ViceMonitor.Bridge.Services.Implementation
                     {
                         logger.LogDebug($"Got unmatched response with non broadcast request id {requestId:x8}");
                     }
+                    MessagesHistory.AddsResponseOnly(response);
                     OnViceResponse(new ViceResponseEventArgs(response));
                 }
             }
@@ -384,6 +387,7 @@ namespace Righthand.ViceMonitor.Bridge.Services.Implementation
             logger.LogDebug("Will process unbound response");
             (var response, _) = await GetResponseAsync(socket, ct).ConfigureAwait(false);
             PerformanceProfiler.Add(new ResponseReadEvent(response.GetType(), IsNested: false, PerformanceProfiler.Ticks));
+            MessagesHistory.AddsResponseOnly(response);
             OnViceResponse(new ViceResponseEventArgs(response));
             return response;
         }
@@ -393,6 +397,7 @@ namespace Righthand.ViceMonitor.Bridge.Services.Implementation
             logger.LogDebug($"Will process command {currentRequestId} of {command.GetType().Name} with request id {currentRequestId}");
             await SendCommandAsync(socket, currentRequestId, command, ct).ConfigureAwait(false);
             PerformanceProfiler.Add(new CommandSentEvent(command.GetType(), PerformanceProfiler.Ticks));
+            int id = MessagesHistory.AddCommand(currentRequestId, command);
             (command as IDisposable)?.Dispose();
             ViceResponse response;
             LastStatusResponse lastStatusResponse = LastStatusResponse.None;
@@ -406,6 +411,7 @@ namespace Righthand.ViceMonitor.Bridge.Services.Implementation
                             .response is CheckpointInfoResponse infoResponse)
                     {
                         info = info.Add(infoResponse);
+                        MessagesHistory.UpdateWithLinkedResponse(id, infoResponse);
                     }
                     var listResponse = (CheckpointListResponse)response;
                     response = listResponse with { Info = info };
@@ -417,6 +423,7 @@ namespace Righthand.ViceMonitor.Bridge.Services.Implementation
             }
             currentRequestId++;
             PerformanceProfiler.Add(new CommandCompletedEvent(command.GetType(), PerformanceProfiler.Ticks));
+            MessagesHistory.UpdateWithResponse(id, response);
             return (response, lastStatusResponse);
         }
 
