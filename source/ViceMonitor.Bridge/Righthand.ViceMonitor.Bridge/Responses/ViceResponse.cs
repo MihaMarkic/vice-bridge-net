@@ -1,5 +1,4 @@
-﻿using System.Collections.Immutable;
-using Righthand.ViceMonitor.Bridge.Commands;
+﻿using Righthand.ViceMonitor.Bridge.Commands;
 using Righthand.ViceMonitor.Bridge.Shared;
 
 namespace Righthand.ViceMonitor.Bridge.Responses

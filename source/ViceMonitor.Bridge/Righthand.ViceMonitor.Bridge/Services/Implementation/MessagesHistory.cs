@@ -1,5 +1,4 @@
-﻿using System.Collections.Immutable;
-using Righthand.ViceMonitor.Bridge.Commands;
+﻿using Righthand.ViceMonitor.Bridge.Commands;
 using Righthand.ViceMonitor.Bridge.Responses;
 using Righthand.ViceMonitor.Bridge.Services.Abstract;
 
@@ -25,15 +24,3 @@ public class NullMessagesHistory : IMessagesHistory
     void IMessagesHistory.UpdateWithResponse(int id, ViceResponse response)
     { }
 }
-
-/// <summary>
-/// Contains message history related data including command and response.
-/// </summary>
-/// <param name="Sequence">VICE sequence value.. Null when response is unbound.</param>
-/// <param name="Command">VICE command. Null when response is unbound.</param>
-/// <param name="Response">VICE response</param>
-/// <param name="StartTime">Ticks when command was issued.</param>
-/// <param name="Elapsed">Ticks when response was received. Null when response is unbound.</param>
-/// <param name="LinkedResponses">A list of linked responses (i.e. for <see cref="CheckpointInfoResponse"/>)</param>
-public record CommunicationData(uint? Sequence, IViceCommand? Command, ViceResponse? Response, long StartTime, long? Elapsed,
-    ImmutableArray<ViceResponse> LinkedResponses);

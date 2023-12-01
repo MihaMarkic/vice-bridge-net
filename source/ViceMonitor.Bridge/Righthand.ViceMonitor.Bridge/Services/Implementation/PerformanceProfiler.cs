@@ -1,5 +1,4 @@
 ﻿using Righthand.ViceMonitor.Bridge.Services.Abstract;
-using System.Collections.Immutable;
 using System.Diagnostics;
 
 namespace Righthand.ViceMonitor.Bridge.Services.Implementation
