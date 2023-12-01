@@ -1,5 +1,4 @@
 ﻿using Righthand.ViceMonitor.Bridge.Responses;
-using System;
 using System.Collections.Immutable;
 
 namespace Righthand.ViceMonitor.Bridge.Commands

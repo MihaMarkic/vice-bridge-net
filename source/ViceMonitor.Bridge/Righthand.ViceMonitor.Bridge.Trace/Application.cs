@@ -203,7 +203,7 @@ namespace Righthand.ViceMonitor.Bridge.Trace
             var response = await command.Response;
             if (response.Response is null)
             {
-                throw new Exception($"Failed to get checkpoit list: {response.ErrorCode}");
+                throw new Exception($"Failed to get checkpoint list: {response.ErrorCode}");
             }
         }
         internal async Task StartUpAsync(CancellationToken ct)

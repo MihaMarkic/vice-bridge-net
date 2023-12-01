@@ -1,7 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-
-namespace Righthand.ViceMonitor.Bridge.Services.Abstract
+﻿namespace Righthand.ViceMonitor.Bridge.Services.Abstract
 {
     /// <summary>
     /// Provides performance data logging.
@@ -31,7 +28,7 @@ namespace Righthand.ViceMonitor.Bridge.Services.Abstract
         void Clear();
     }
     /// <summary>
-    /// Type of data type that is avaialable.
+    /// Type of data type that is available.
     /// </summary>
     public enum PerformanceDataType
     {
@@ -40,7 +37,7 @@ namespace Righthand.ViceMonitor.Bridge.Services.Abstract
         /// </summary>
         Command,
         /// <summary>
-        /// VICE response to be recevied.
+        /// VICE response to be received.
         /// </summary>
         Response
     }
