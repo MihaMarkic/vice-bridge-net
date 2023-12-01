@@ -10,7 +10,7 @@ namespace Righthand.ViceMonitor.Bridge.Services.Implementation;
 public class NullMessagesHistory : IMessagesHistory
 {
     ///<inheritdoc/>
-    int IMessagesHistory.AddCommand(uint sequence, IViceCommand? command) => 0;
+    ValueTask<int> IMessagesHistory.AddCommandAsync(uint sequence, IViceCommand? command) => new ValueTask<int>(0);
     ///<inheritdoc/>
     void IMessagesHistory.AddsResponseOnly(ViceResponse response)
     { }

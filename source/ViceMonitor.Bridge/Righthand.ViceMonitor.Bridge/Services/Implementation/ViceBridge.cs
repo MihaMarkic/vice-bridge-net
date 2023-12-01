@@ -396,7 +396,7 @@ namespace Righthand.ViceMonitor.Bridge.Services.Implementation
             logger.LogDebug($"Will process command {currentRequestId} of {command.GetType().Name} with request id {currentRequestId}");
             await SendCommandAsync(socket, currentRequestId, command, ct).ConfigureAwait(false);
             PerformanceProfiler.Add(new CommandSentEvent(command.GetType(), PerformanceProfiler.Ticks));
-            int id = MessagesHistory.AddCommand(currentRequestId, command);
+            int id = await MessagesHistory.AddCommandAsync(currentRequestId, command);
             (command as IDisposable)?.Dispose();
             ViceResponse response;
             LastStatusResponse lastStatusResponse = LastStatusResponse.None;

@@ -18,7 +18,7 @@ namespace Righthand.ViceMonitor.Bridge.Services.Abstract
         /// <param name="sequence">VICE sequence id</param>
         /// <param name="command">Issued VICE command</param>
         /// <returns></returns>
-        int AddCommand(uint sequence, IViceCommand? command);
+        ValueTask<int> AddCommandAsync(uint sequence, IViceCommand? command);
         /// <summary>
         /// Updates existing issued command with response.
         /// </summary>
