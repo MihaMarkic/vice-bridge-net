@@ -22,6 +22,7 @@ namespace Righthand.ViceMonitor.Bridge
             services.AddSingleton<IMessagesHistory, NullMessagesHistory>();
 #else
             services.AddSingleton<IPerformanceProfiler, NullPerformanceProfiler>();
+            services.AddSingleton<IMessagesHistory, NullMessagesHistory>();
 #endif
             services.AddSingleton<ResponseBuilder>();
         }
