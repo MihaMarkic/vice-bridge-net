@@ -1,6 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using Righthand.ViceMonitor.Bridge.Services.Abstract;
+﻿using Righthand.ViceMonitor.Bridge.Services.Abstract;
 
 namespace Righthand.ViceMonitor.Bridge.Services.Implementation
 {

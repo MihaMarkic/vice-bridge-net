@@ -1,6 +1,4 @@
-﻿using System;
-using System.Collections.Immutable;
-using System.Text;
+﻿using System.Text;
 using Microsoft.Extensions.Logging;
 using Righthand.ViceMonitor.Bridge.Commands;
 using Righthand.ViceMonitor.Bridge.Shared;

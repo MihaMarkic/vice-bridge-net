@@ -1,5 +1,4 @@
-﻿using System;
-using Righthand.ViceMonitor.Bridge.Responses;
+﻿using Righthand.ViceMonitor.Bridge.Responses;
 
 namespace Righthand.ViceMonitor.Bridge.Exceptions
 {

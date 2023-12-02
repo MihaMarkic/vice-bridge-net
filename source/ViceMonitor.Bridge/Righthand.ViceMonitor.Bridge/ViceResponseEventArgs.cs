@@ -1,5 +1,4 @@
 ﻿using Righthand.ViceMonitor.Bridge.Responses;
-using System;
 
 namespace Righthand.ViceMonitor.Bridge
 {
