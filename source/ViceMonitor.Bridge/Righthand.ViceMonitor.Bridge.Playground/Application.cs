@@ -114,6 +114,7 @@ namespace ModernVICEPDBMonitor.Playground
                 .Add(new KeyValuePair<string, string>("cd", "Checkpoint delete"))
                 .Add(new KeyValuePair<string, string>("ct", "Checkpoint toggle"))
                 .Add(new KeyValuePair<string, string>("os", "Condition set"))
+                .Add(new KeyValuePair<string, string>("amg", "Memory get all"))
                 .Add(new KeyValuePair<string, string>("mg", "Memory get"))
                 .Add(new KeyValuePair<string, string>("ms", "Memory set"))
                 .Add(new KeyValuePair<string, string>("p", "Ping"))
@@ -160,6 +161,9 @@ namespace ModernVICEPDBMonitor.Playground
                         break;
                     case "mg":
                         await MemoryGetAsync(ct);
+                        break;
+                    case "amg":
+                        await AllMemoryGetAsync(ct);
                         break;
                     case "ms":
                         await MemorySetAsync(ct);
@@ -491,6 +495,25 @@ namespace ModernVICEPDBMonitor.Playground
                     var buffer = response.Response.Memory.Value;
                     string data = string.Join(" ", buffer.Data.Take((int)buffer.Size).Select(b => $"${b:X2}"));
                     AnsiConsole.MarkupLine($"Set response: {response.ErrorCode}: [bold]{data}[/]");
+                    response.Response.Memory.Value.Dispose();
+                }
+                else
+                {
+                    AnsiConsole.MarkupLine($"Set response: {response.ErrorCode} [red]without data[/red]");
+                }
+            });
+        }
+        async Task AllMemoryGetAsync(CancellationToken ct)
+        {
+            Stopwatch sw = Stopwatch.StartNew();
+            var command = bridge.EnqueueCommand(new MemoryGetCommand(0, 0x0000, 0xFFFE, MemSpace.MainMemory, 0));
+            await AwaitWithTimeoutAsync(command.Response, response =>
+            {
+                if (response.Response?.Memory is not null)
+                {
+                    var buffer = response.Response.Memory.Value;
+                    //string data = string.Join(" ", buffer.Data.Take((int)buffer.Size).Select(b => $"${b:X2}"));
+                    AnsiConsole.MarkupLine($"Set response: {response.ErrorCode}: [bold]Got {buffer.Size:X4} bytes in {sw.ElapsedMilliseconds:#,##0}ms[/]");
                     response.Response.Memory.Value.Dispose();
                 }
                 else
