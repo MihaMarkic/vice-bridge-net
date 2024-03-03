@@ -3,6 +3,7 @@ using Righthand.ViceMonitor.Bridge;
 using Righthand.ViceMonitor.Bridge.Commands;
 using Righthand.ViceMonitor.Bridge.Responses;
 using Righthand.ViceMonitor.Bridge.Services.Abstract;
+using Righthand.ViceMonitor.Bridge.Services.Implementation;
 using Righthand.ViceMonitor.Bridge.Shared;
 using Spectre.Console;
 using System;
@@ -127,6 +128,7 @@ namespace ModernVICEPDBMonitor.Playground
                 .Add(new KeyValuePair<string, string>("stop", "Stop bridge"))
                 .Add(new KeyValuePair<string, string>("l", "Loads sample tiny.o"))
                 .Add(new KeyValuePair<string, string>("nc", "Nested call"))
+                .Add(new KeyValuePair<string, string>("si", "Step into"))
                 .Add(new KeyValuePair<string, string>("ros", "Resume On Stop"))
                 .Add(new KeyValuePair<string, string>("s", "Starts loaded sample tiny.o"));
             bool quit = false;
@@ -200,6 +202,9 @@ namespace ModernVICEPDBMonitor.Playground
                         break;
                     case "ros":
                         await ResumeOnStopAsync(ct);
+                        break;
+                    case "si": 
+                        await StepIntoAsync(ct);
                         break;
                     case "stop":
                         await StopBridgeAsync(waitForQueueToProcess: false, ct);
@@ -275,6 +280,15 @@ namespace ModernVICEPDBMonitor.Playground
                 }
                 AnsiConsole.MarkupLine($"Got registers, status is {viceStatus}, should resume VICE"); 
             });
+        }
+        internal async Task StepIntoAsync(CancellationToken ct)
+        {
+            var command = bridge.EnqueueCommand(
+                new AdvanceInstructionCommand(StepOverSubroutine: false, NumberOfInstructions: 1)); 
+            await AwaitWithTimeoutAsync(command.Response, r =>
+                {
+                    AnsiConsole.MarkupLine("Done");
+                });
         }
         internal async Task NestedCallAsync(CancellationToken ct)
         {
