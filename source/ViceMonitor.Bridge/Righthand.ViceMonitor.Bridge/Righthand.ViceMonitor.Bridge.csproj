@@ -17,6 +17,7 @@
     <RepositoryUrl>https://github.com/MihaMarkic/vice-bridge-net.git</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PackageProjectUrl>https://github.com/MihaMarkic/vice-bridge-net</PackageProjectUrl>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
     <!--<PackageIcon>icon.png</PackageIcon>-->
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <GenerateDocumentationFile>True</GenerateDocumentationFile>
@@ -31,6 +32,7 @@
   </Choose>
   <ItemGroup>
     <Compile Remove="Services\Implementation\PerformanceEventDescendant.cs" />
+    <None Include="..\..\..\README.md" Pack="true" PackagePath="\" />
   </ItemGroup>
 
   <!--<Target Name="PreparePackageReleaseNotesFromFile" BeforeTargets="GenerateNuspec">
