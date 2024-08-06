@@ -1,6 +1,4 @@
-﻿using System;
-
-namespace Righthand.ViceMonitor.Bridge
+﻿namespace Righthand.ViceMonitor.Bridge
 {
     /// <summary>
     /// Occurs when connection status changes.

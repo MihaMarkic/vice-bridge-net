@@ -3,14 +3,9 @@ using Righthand.ViceMonitor.Bridge.Commands;
 using Righthand.ViceMonitor.Bridge.Exceptions;
 using Righthand.ViceMonitor.Bridge.Responses;
 using Righthand.ViceMonitor.Bridge.Services.Abstract;
-using System;
 using System.Buffers;
-using System.Collections.Immutable;
-using System.Linq;
 using System.Net.NetworkInformation;
 using System.Net.Sockets;
-using System.Threading;
-using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
 
 namespace Righthand.ViceMonitor.Bridge.Services.Implementation
@@ -22,6 +17,7 @@ namespace Righthand.ViceMonitor.Bridge.Services.Implementation
     /// <threadsafety>Class members are not thread safe unless explicitly stated.</threadsafety>
     public sealed class ViceBridge: IViceBridge
     {
+        record EnqueuedCommand(IViceCommand Command, bool ResumeOnStopped);
         readonly object sync = new object();
         readonly ILogger<ViceBridge> logger;
         readonly ResponseBuilder responseBuilder;
@@ -30,7 +26,7 @@ namespace Righthand.ViceMonitor.Bridge.Services.Implementation
         TaskCompletionSource? tcs;
         uint currentRequestId = 0;
         readonly ArrayPool<byte> byteArrayPool = ArrayPool<byte>.Shared;
-        BufferBlock<IViceCommand>? commands;
+        BufferBlock<EnqueuedCommand>? commands;
         bool isConnected;
         bool isRunning;
         /// <inheritdoc/>
@@ -45,6 +41,7 @@ namespace Righthand.ViceMonitor.Bridge.Services.Implementation
         /// Log of performance data.
         /// </summary>
         public IPerformanceProfiler PerformanceProfiler { get; }
+        public IMessagesHistory MessagesHistory { get; }
         /// <summary>
         /// Creates an instance of <see cref="ViceBridge"/>.
         /// </summary>
@@ -52,11 +49,12 @@ namespace Righthand.ViceMonitor.Bridge.Services.Implementation
         /// <param name="responseBuilder">Type responsible for building response types.</param>
         /// <param name="performanceProfiler"></param>
         public ViceBridge(ILogger<ViceBridge> logger, ResponseBuilder responseBuilder, 
-            IPerformanceProfiler performanceProfiler)
+            IPerformanceProfiler performanceProfiler, IMessagesHistory messagesHistory)
         {
             this.logger = logger;
             this.responseBuilder = responseBuilder;
             this.PerformanceProfiler = performanceProfiler;
+            this.MessagesHistory = messagesHistory;
         }
         /// <inheritdoc />
         /// <threadsafety>Property is thread safe.</threadsafety>
@@ -103,7 +101,7 @@ namespace Righthand.ViceMonitor.Bridge.Services.Implementation
                     cts = new CancellationTokenSource();
                     token = cts.Token;
                 }
-                commands = new BufferBlock<IViceCommand>();
+                commands = new BufferBlock<EnqueuedCommand>();
                 var task = Task.Factory.StartNew(
                     () => StartAsync(port, commands, token), 
                     cancellationToken: token, 
@@ -143,7 +141,7 @@ namespace Righthand.ViceMonitor.Bridge.Services.Implementation
                 }
             }
         }
-        async Task StartAsync(int port, ISourceBlock<IViceCommand> source, CancellationToken ct)
+        async Task StartAsync(int port, ISourceBlock<EnqueuedCommand> source, CancellationToken ct)
         {
             Thread.CurrentThread.Name = "Bridge loop";
             try
@@ -216,10 +214,29 @@ namespace Righthand.ViceMonitor.Bridge.Services.Implementation
                 }
             }
         }
-        async Task<ViceResponse> WaitUntilMatchesResponseAsync(Socket socket, uint targetRequestId, CancellationToken ct)
+        /// <summary>
+        /// Defines last response statuses of interest.
+        /// </summary>
+        public enum LastStatusResponse
+        {
+            /// <summary>
+            /// Stopped execution.
+            /// </summary>
+            Stopped,
+            /// <summary>
+            /// Resumed execution.
+            /// </summary>
+            Resumed,
+            /// <summary>
+            /// No other status from the list was received.
+            /// </summary>
+            None
+        }
+        async Task<(ViceResponse Response, LastStatusResponse LastStatusResponse)> WaitUntilMatchesResponseAsync(Socket socket, uint targetRequestId, CancellationToken ct)
         {
             logger.LogDebug($"Waiting for request id {targetRequestId}");
-            while(true)
+            LastStatusResponse lastStatusResponse = LastStatusResponse.None;
+            while (true)
             {
                 ct.ThrowIfCancellationRequested();
                 (var response, var requestId) = await GetResponseAsync(socket, ct).ConfigureAwait(false);
@@ -230,10 +247,19 @@ namespace Righthand.ViceMonitor.Bridge.Services.Implementation
                         PerformanceProfiler.Add(new ResponseReadEvent(response.GetType(), IsNested: false, PerformanceProfiler.Ticks));
                     }
                     logger.LogDebug($"Found matching request id {targetRequestId}");
-                    return response;
+                    return (response, lastStatusResponse);
                 }
                 else
                 {
+                    switch(response)
+                    {
+                        case StoppedResponse:
+                            lastStatusResponse = LastStatusResponse.Stopped; 
+                            break;
+                        case ResumedResponse:
+                            lastStatusResponse = LastStatusResponse.Resumed;
+                            break;
+                    }
                     if (PerformanceProfiler.IsEnabled)
                     {
                         PerformanceProfiler.Add(new ResponseReadEvent(response.GetType(), IsNested: true, PerformanceProfiler.Ticks));
@@ -242,20 +268,26 @@ namespace Righthand.ViceMonitor.Bridge.Services.Implementation
                     {
                         logger.LogDebug($"Got unmatched response with non broadcast request id {requestId:x8}");
                     }
+                    MessagesHistory.AddsResponseOnly(response);
                     OnViceResponse(new ViceResponseEventArgs(response));
                 }
             }
         }
         /// <inheritdoc />
         /// <threadsafety>Method is thread safe.</threadsafety>
-        public T EnqueueCommand<T>(T command)
+        public T EnqueueCommand<T>(T command, bool resumeOnStopped = false)
             where T: IViceCommand
         {
             if (commands is null)
             {
                 throw new Exception("Service is not running");
             }
-            commands.Post(command);
+            var errors = command.CollectErrors();
+            if (errors.Length > 0)
+            {
+                throw new Exception(string.Join(Environment.NewLine, errors));
+            }
+            commands.Post(new EnqueuedCommand(command, resumeOnStopped));
             return command;
         }
         /// <summary>
@@ -273,7 +305,7 @@ namespace Righthand.ViceMonitor.Bridge.Services.Implementation
             else
                 return true;
         }
-        async Task LoopAsync(Socket socket, ISourceBlock<IViceCommand> source, CancellationToken ct)
+        async Task LoopAsync(Socket socket, ISourceBlock<EnqueuedCommand> source, CancellationToken ct)
         {
             isRunning = true;
             try
@@ -296,53 +328,46 @@ namespace Righthand.ViceMonitor.Bridge.Services.Implementation
                     ct.ThrowIfCancellationRequested();
                     if (task == commandAvailableTask)
                     {
-                        var command = await source.ReceiveAsync(ct);
-                        logger.LogDebug($"Will process command {currentRequestId} of {command.GetType().Name} with request id {currentRequestId}");
-                        await SendCommandAsync(socket, currentRequestId, command, ct).ConfigureAwait(false);
-                        if (PerformanceProfiler.IsEnabled)
+                        bool isHandlingSuccessful = true;
+                        var (command, resumeOnStopped) = await source.ReceiveAsync(ct);
+                        var (response, lastStatusResponse) = await SendCommandAndWaitForResponse(socket, command, ct).ConfigureAwait(false);
+
+                        if (resumeOnStopped && lastStatusResponse == LastStatusResponse.Stopped)
                         {
-                            PerformanceProfiler.Add(new CommandSentEvent(command.GetType(), PerformanceProfiler.Ticks));
-                        }
-                        (command as IDisposable)?.Dispose();
-                        ViceResponse response;
-                        switch (command)
-                        {
-                            // list is a special case that collects matching CheckpointInfoResponses
-                            case CheckpointListCommand listCommand:
-                                var info = ImmutableArray<CheckpointInfoResponse>.Empty;
-                                while ((response = await WaitUntilMatchesResponseAsync(socket, currentRequestId, ct).ConfigureAwait(false)) is CheckpointInfoResponse infoResponse)
+                            logger.LogDebug("Resuming VICE");
+                            var exitCommand = new ExitCommand();
+                            var (exitResponse, exitLastStatusResponse) = await SendCommandAndWaitForResponse(socket, exitCommand, ct)
+                                .ConfigureAwait(false);
+                            logger.LogDebug("Resumed VICE with status {status}", exitResponse.ErrorCode);
+                            if (exitLastStatusResponse != LastStatusResponse.Resumed)
+                            {
+                                // waits two seconds before it times out
+                                using (var cts = new CancellationTokenSource(TimeSpan.FromSeconds(2)))
+                                using (CancellationTokenSource linkedCts =
+                                    CancellationTokenSource.CreateLinkedTokenSource(ct, cts.Token))
                                 {
-                                    info = info.Add(infoResponse);
+                                    try
+                                    {
+                                        await WaitForResumedResponse(socket, linkedCts.Token);
+                                    }
+                                    // handle timeouts only, propagate other exceptions
+                                    catch (OperationCanceledException) when (cts.IsCancellationRequested)
+                                    {
+                                        command.SetException(
+                                            new ResumeOnStoppedTimeoutException(response, "Failed to wait for ResumedResponse during timespan"));
+                                        isHandlingSuccessful = false;
+                                    }
                                 }
-                                var listResponse = (CheckpointListResponse)response;
-                                response = listResponse with { Info = info };
-                                break;
-                            default:
-                                response = await WaitUntilMatchesResponseAsync(socket, currentRequestId, ct).ConfigureAwait(false);
-                                logger.LogDebug($"Command {currentRequestId} of {command.GetType().Name} got response with result {response.ErrorCode}");
-                                break;
+                            }
                         }
-                        command.SetResult(response);
-                        currentRequestId++;
-                        if (PerformanceProfiler.IsEnabled)
+                        if (isHandlingSuccessful)
                         {
-                            PerformanceProfiler.Add(new CommandCompletedEvent(command.GetType(), PerformanceProfiler.Ticks));
+                            command.SetResult(response);
                         }
-                        continue;
                     }
                     while (socket.Available > 0)
                     {
-                        if (PerformanceProfiler.IsEnabled)
-                        {
-                            PerformanceProfiler.Add(new DataAvailableEvent(PerformanceDataType.Response, PerformanceProfiler.Ticks));
-                        }
-                        logger.LogDebug("Will process unbound response");
-                        (var response, _) = await GetResponseAsync(socket, ct).ConfigureAwait(false);
-                        if (PerformanceProfiler.IsEnabled)
-                        {
-                            PerformanceProfiler.Add(new ResponseReadEvent(response.GetType(), IsNested: false, PerformanceProfiler.Ticks));
-                        }
-                        OnViceResponse(new ViceResponseEventArgs(response));
+                        await ProcessUnboundAsync(socket, ct);
                     }
                 }
             }
@@ -350,6 +375,67 @@ namespace Righthand.ViceMonitor.Bridge.Services.Implementation
             {
                 IsRunning = false;
             }
+        }
+
+        internal async Task WaitForResumedResponse(Socket socket, CancellationToken ct)
+        {
+            while (!ct.IsCancellationRequested)
+            {
+                while (socket.Available > 0)
+                {
+                    if ((await ProcessUnboundAsync(socket, ct)) is ResumedResponse)
+                    {
+                        return;
+                    }
+                }
+                await socket.WaitForDataAsync(ct);
+            }
+        }
+
+        internal async Task<ViceResponse> ProcessUnboundAsync(Socket socket, CancellationToken ct)
+        {
+            PerformanceProfiler.Add(new DataAvailableEvent(PerformanceDataType.Response, PerformanceProfiler.Ticks));
+            logger.LogDebug("Will process unbound response");
+            (var response, _) = await GetResponseAsync(socket, ct).ConfigureAwait(false);
+            PerformanceProfiler.Add(new ResponseReadEvent(response.GetType(), IsNested: false, PerformanceProfiler.Ticks));
+            MessagesHistory.AddsResponseOnly(response);
+            OnViceResponse(new ViceResponseEventArgs(response));
+            return response;
+        }
+
+        private async Task<(ViceResponse Response, LastStatusResponse LastStatusResponse)> SendCommandAndWaitForResponse(Socket socket, IViceCommand command, CancellationToken ct)
+        {
+            logger.LogDebug($"Will process command {currentRequestId} of {command.GetType().Name} with request id {currentRequestId}");
+            await SendCommandAsync(socket, currentRequestId, command, ct).ConfigureAwait(false);
+            PerformanceProfiler.Add(new CommandSentEvent(command.GetType(), PerformanceProfiler.Ticks));
+            int id = await MessagesHistory.AddCommandAsync(currentRequestId, command);
+            (command as IDisposable)?.Dispose();
+            ViceResponse response;
+            LastStatusResponse lastStatusResponse = LastStatusResponse.None;
+            switch (command)
+            {
+                // list is a special case that collects matching CheckpointInfoResponses
+                case CheckpointListCommand listCommand:
+                    var info = ImmutableArray<CheckpointInfoResponse>.Empty;
+                    while ((
+                        (response, lastStatusResponse) = await WaitUntilMatchesResponseAsync(socket, currentRequestId, ct).ConfigureAwait(false))
+                            .response is CheckpointInfoResponse infoResponse)
+                    {
+                        info = info.Add(infoResponse);
+                        MessagesHistory.UpdateWithLinkedResponse(id, infoResponse);
+                    }
+                    var listResponse = (CheckpointListResponse)response;
+                    response = listResponse with { Info = info };
+                    break;
+                default:
+                    (response, lastStatusResponse) = await WaitUntilMatchesResponseAsync(socket, currentRequestId, ct).ConfigureAwait(false);
+                    logger.LogDebug($"Command {currentRequestId} of {command.GetType().Name} got response with result {response.ErrorCode}");
+                    break;
+            }
+            currentRequestId++;
+            PerformanceProfiler.Add(new CommandCompletedEvent(command.GetType(), PerformanceProfiler.Ticks));
+            MessagesHistory.UpdateWithResponse(id, response);
+            return (response, lastStatusResponse);
         }
 
         /// <summary>

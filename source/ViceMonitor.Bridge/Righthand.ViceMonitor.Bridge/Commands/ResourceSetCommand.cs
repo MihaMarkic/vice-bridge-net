@@ -1,6 +1,5 @@
 ﻿using Righthand.ViceMonitor.Bridge.Responses;
 using Righthand.ViceMonitor.Bridge.Shared;
-using System;
 
 namespace Righthand.ViceMonitor.Bridge.Commands
 {

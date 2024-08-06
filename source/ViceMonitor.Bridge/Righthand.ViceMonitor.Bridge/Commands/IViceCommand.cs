@@ -1,5 +1,4 @@
 ﻿using Righthand.ViceMonitor.Bridge.Responses;
-using System;
 
 namespace Righthand.ViceMonitor.Bridge.Commands
 {
@@ -27,10 +26,20 @@ namespace Righthand.ViceMonitor.Bridge.Commands
         /// <param name="response"></param>
         void SetResult(ViceResponse response);
         /// <summary>
+        /// Throws an exception.
+        /// </summary>
+        /// <param name="ex"></param>
+        void SetException(Exception ex);
+        /// <summary>
         /// Serializes command into byte array.
         /// </summary>
         /// <param name="requestId"></param>
         /// <returns></returns>
         (ManagedBuffer Buffer, uint Length) GetBinaryData(uint requestId);
+        /// <summary>
+        /// Checks if arguments are valid.
+        /// </summary>
+        /// <returns>List of errors if there are any, empty list otherwise.</returns>
+        ImmutableArray<string> CollectErrors();
     }
 }

@@ -17,7 +17,13 @@ namespace Righthand.ViceMonitor.Bridge
         public static void AddViceBridge(this IServiceCollection services)
         {
             services.AddSingleton<IViceBridge, ViceBridge>();
+#if DEBUG
+            services.AddSingleton<IPerformanceProfiler, PerformanceProfiler>();
+            services.AddSingleton<IMessagesHistory, NullMessagesHistory>();
+#else
             services.AddSingleton<IPerformanceProfiler, NullPerformanceProfiler>();
+            services.AddSingleton<IMessagesHistory, NullMessagesHistory>();
+#endif
             services.AddSingleton<ResponseBuilder>();
         }
     }
