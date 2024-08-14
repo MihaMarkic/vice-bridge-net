@@ -157,7 +157,7 @@ namespace Righthand.ViceMonitor.Bridge.Services.Implementation
                         logger.LogDebug("Waiting for available port");
                         await WaitForPort(port, ct).ConfigureAwait(false);
                         logger.LogDebug("Port acquired");
-                        socket.Connect("localhost", port);
+                        await socket.ConnectAsync("localhost", port, ct);
                         logger.LogDebug("Port connected");
                         if (socket.Connected)
                         {
@@ -363,6 +363,15 @@ namespace Righthand.ViceMonitor.Bridge.Services.Implementation
                         if (isHandlingSuccessful)
                         {
                             command.SetResult(response);
+                        }
+                    }
+                    else if (task == dataAvailableTask)
+                    {
+                        // when awaited dataAvailableTask expect data to be present
+                        // otherwise treat is as socket disconnected
+                        if (socket.Available == 0)
+                        {
+                            throw new SocketDisconnectedException("Socket disconnected based on no data received");
                         }
                     }
                     while (socket.Available > 0)
