@@ -7,21 +7,19 @@ namespace Righthand.ViceMonitor.Bridge.Services.Implementation
     /// <threadsafety>Thread safe.</threadsafety>
     public class PerformanceProfiler : IPerformanceProfiler
     {
-        readonly object sync = new object();
+        private readonly object _sync = new();
+        private readonly Stopwatch _stopwatch = Stopwatch.StartNew();
+        private readonly List<PerformanceEvent> _events = new();
         /// <inheritdoc/>
-        readonly Stopwatch stopwatch = Stopwatch.StartNew();
+        public long Ticks => _stopwatch.ElapsedMilliseconds;
         /// <inheritdoc/>
-        readonly List<PerformanceEvent> events = new List<PerformanceEvent>();
-        /// <inheritdoc/>
-        public long Ticks => stopwatch.ElapsedMilliseconds;
-        /// <inheritdoc/>
-        public IReadOnlyList<PerformanceEvent> Events
+        public ImmutableArray<PerformanceEvent> Events
         {
             get
             {
-                lock (sync)
+                lock (_sync)
                 {
-                    return events.ToImmutableArray();
+                    return [.._events];
                 }
             }
         }
@@ -30,18 +28,18 @@ namespace Righthand.ViceMonitor.Bridge.Services.Implementation
         /// <inheritdoc/>
         public void Add(PerformanceEvent e)
         {
-            lock (sync)
+            lock (_sync)
             {
-                events.Add(e);
+                _events.Add(e);
             }
         }
         /// <inheritdoc/>
         public void Clear()
         {
-            lock (sync)
+            lock (_sync)
             {
-                events.Clear();
-                stopwatch.Restart();
+                _events.Clear();
+                _stopwatch.Restart();
             }
         }
     }

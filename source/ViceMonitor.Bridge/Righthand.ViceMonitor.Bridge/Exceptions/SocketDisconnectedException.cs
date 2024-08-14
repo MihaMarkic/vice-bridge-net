@@ -1,6 +1,4 @@
-﻿using System.Runtime.Serialization;
-
-namespace Righthand.ViceMonitor.Bridge.Exceptions
+﻿namespace Righthand.ViceMonitor.Bridge.Exceptions
 {
     /// <summary>
     /// 
@@ -26,14 +24,6 @@ namespace Righthand.ViceMonitor.Bridge.Exceptions
         /// <param name="message"></param>
         /// <param name="innerException"></param>
         public SocketDisconnectedException(string? message, Exception? innerException) : base(message, innerException)
-        {
-        }
-        /// <summary>
-        /// Creates an instance of <see cref="SocketDisconnectedException"/>
-        /// </summary>
-        /// <param name="info"></param>
-        /// <param name="context"></param>
-        protected SocketDisconnectedException(SerializationInfo info, StreamingContext context) : base(info, context)
         {
         }
     }

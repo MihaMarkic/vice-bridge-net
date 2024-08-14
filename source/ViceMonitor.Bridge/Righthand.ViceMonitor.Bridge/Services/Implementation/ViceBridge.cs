@@ -17,22 +17,22 @@ namespace Righthand.ViceMonitor.Bridge.Services.Implementation
     /// <threadsafety>Class members are not thread safe unless explicitly stated.</threadsafety>
     public sealed class ViceBridge: IViceBridge
     {
-        record EnqueuedCommand(IViceCommand Command, bool ResumeOnStopped);
-        readonly object sync = new object();
-        readonly ILogger<ViceBridge> logger;
-        readonly ResponseBuilder responseBuilder;
-        CancellationTokenSource? cts;
-        Task? loop;
-        TaskCompletionSource? tcs;
-        uint currentRequestId = 0;
-        readonly ArrayPool<byte> byteArrayPool = ArrayPool<byte>.Shared;
-        BufferBlock<EnqueuedCommand>? commands;
-        bool isConnected;
-        bool isRunning;
+        private record EnqueuedCommand(IViceCommand Command, bool ResumeOnStopped);
+        private readonly object _sync = new ();
+        private readonly ILogger<ViceBridge> _logger;
+        private readonly ResponseBuilder _responseBuilder;
+        private CancellationTokenSource? _cts;
+        private Task? _loop;
+        private TaskCompletionSource? _tcs;
+        private uint _currentRequestId;
+        private readonly ArrayPool<byte> _byteArrayPool = ArrayPool<byte>.Shared;
+        private BufferBlock<EnqueuedCommand>? _commands;
+        private bool _isConnected;
+        private bool _isRunning;
         /// <inheritdoc/>
-        public bool IsStarted => tcs is not null && cts is not null;
+        public bool IsStarted => _tcs is not null && _cts is not null;
         /// <inheritdoc />
-        public Task? RunnerTask => tcs?.Task;
+        public Task? RunnerTask => _tcs?.Task;
         /// <inheritdoc />
         public event EventHandler<ViceResponseEventArgs>? ViceResponse;
         /// <inheritdoc />
@@ -41,27 +41,31 @@ namespace Righthand.ViceMonitor.Bridge.Services.Implementation
         /// Log of performance data.
         /// </summary>
         public IPerformanceProfiler PerformanceProfiler { get; }
+        /// <summary>
+        /// Service that keeps history of messages.
+        /// </summary>
         public IMessagesHistory MessagesHistory { get; }
         /// <summary>
         /// Creates an instance of <see cref="ViceBridge"/>.
         /// </summary>
         /// <param name="logger"></param>
         /// <param name="responseBuilder">Type responsible for building response types.</param>
-        /// <param name="performanceProfiler"></param>
+        /// <param name="performanceProfiler">Performance profiler service.</param>
+        /// <param name="messagesHistory">Messages history service.</param>
         public ViceBridge(ILogger<ViceBridge> logger, ResponseBuilder responseBuilder, 
             IPerformanceProfiler performanceProfiler, IMessagesHistory messagesHistory)
         {
-            this.logger = logger;
-            this.responseBuilder = responseBuilder;
-            this.PerformanceProfiler = performanceProfiler;
-            this.MessagesHistory = messagesHistory;
+            _logger = logger;
+            _responseBuilder = responseBuilder;
+            PerformanceProfiler = performanceProfiler;
+            MessagesHistory = messagesHistory;
         }
         /// <inheritdoc />
         /// <threadsafety>Property is thread safe.</threadsafety>
         public bool IsConnected 
         { 
-            get { lock (sync) { return isConnected; } }
-            private set { lock (sync) { isConnected = value; } }
+            get { lock (_sync) { return _isConnected; } }
+            private set { lock (_sync) { _isConnected = value; } }
         }
         void OnViceResponse(ViceResponseEventArgs e) => ViceResponse?.Invoke(this, e);
         void OnConnectedChanged(ConnectedChangedEventArgs e) => ConnectedChanged?.Invoke(this, e);
@@ -85,33 +89,33 @@ namespace Righthand.ViceMonitor.Bridge.Services.Implementation
         /// <threadsafety>Property is thread safe.</threadsafety>
         public bool IsRunning
         {
-            get { lock (sync) { return isRunning; } }
-            private set { lock (sync) { isRunning = value; } }
+            get { lock (_sync) { return _isRunning; } }
+            private set { lock (_sync) { _isRunning = value; } }
         }
         /// <inheritdoc />
         public void Start(int port = 6502)
         {
             if (!IsStarted)
             {
-                logger.LogDebug("Start called");
-                tcs = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+                _logger.LogDebug("Start called");
+                _tcs = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
                 CancellationToken token;
-                lock (sync)
+                lock (_sync)
                 {
-                    cts = new CancellationTokenSource();
-                    token = cts.Token;
+                    _cts = new CancellationTokenSource();
+                    token = _cts.Token;
                 }
-                commands = new BufferBlock<EnqueuedCommand>();
+                _commands = new BufferBlock<EnqueuedCommand>();
                 var task = Task.Factory.StartNew(
-                    () => StartAsync(port, commands, token), 
+                    () => StartAsync(port, _commands, token), 
                     cancellationToken: token, 
                     creationOptions: TaskCreationOptions.LongRunning,
                     scheduler: TaskScheduler.Default);
-                loop = task.Unwrap();
+                _loop = task.Unwrap();
             }
             else
             {
-                logger.LogWarning("Already running");
+                _logger.LogWarning("Already running");
             }
         }
         /// <inheritdoc/>
@@ -121,17 +125,17 @@ namespace Righthand.ViceMonitor.Bridge.Services.Implementation
             {
                 if (waitForQueueToProcess)
                 {
-                    if (commands is null)
+                    if (_commands is null)
                     {
                         throw new Exception("Commands queue is not initialized");
                     }
-                    commands?.Complete();
+                    _commands?.Complete();
                 }
                 else
                 {
-                    lock (sync)
+                    lock (_sync)
                     {
-                        cts?.Cancel();
+                        _cts?.Cancel();
                     }
                 }
                 var runner = RunnerTask;
@@ -141,31 +145,31 @@ namespace Righthand.ViceMonitor.Bridge.Services.Implementation
                 }
             }
         }
-        async Task StartAsync(int port, ISourceBlock<EnqueuedCommand> source, CancellationToken ct)
+
+        private async Task StartAsync(int port, ISourceBlock<EnqueuedCommand> source, CancellationToken ct)
         {
             Thread.CurrentThread.Name = "Bridge loop";
             try
             {
-                Socket? socket;
                 bool run = true;
                 while (run)
                 {
-                    logger.LogInformation("Starting");
-                    socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+                    _logger.LogInformation("Starting");
+                    var socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
                     try
                     {
-                        logger.LogDebug("Waiting for available port");
+                        _logger.LogDebug("Waiting for available port");
                         await WaitForPort(port, ct).ConfigureAwait(false);
-                        logger.LogDebug("Port acquired");
+                        _logger.LogDebug("Port acquired");
                         await socket.ConnectAsync("localhost", port, ct);
-                        logger.LogDebug("Port connected");
+                        _logger.LogDebug("Port connected");
                         if (socket.Connected)
                         {
-                            lock (sync)
+                            lock (_sync)
                             {
-                                if (!isConnected)
+                                if (!_isConnected)
                                 {
-                                    isConnected = true;
+                                    _isConnected = true;
                                     OnConnectedChanged(new ConnectedChangedEventArgs(true));
                                 }
                             }
@@ -175,42 +179,42 @@ namespace Righthand.ViceMonitor.Bridge.Services.Implementation
                     }
                     catch (OperationCanceledException)
                     {
-                        logger.LogInformation("Finishing loop");
+                        _logger.LogInformation("Finishing loop");
                         throw;
                     }
                     catch (SocketDisconnectedException)
                     {
-                        logger.LogWarning("Socket disconnected");
+                        _logger.LogWarning("Socket disconnected");
                     }
                     catch (Exception ex)
                     {
-                        logger.LogError(ex, "Unknown exception occurred");
+                        _logger.LogError(ex, "Unknown exception occurred");
                     }
                     finally
                     {
                         IsConnected = false;
                         OnConnectedChanged(new ConnectedChangedEventArgs(false));
-                        logger.LogInformation("Ending");
+                        _logger.LogInformation("Ending");
                         if (socket.Connected)
                         {
                             socket.Shutdown(SocketShutdown.Both);
                             socket.Close();
                             socket.Dispose();
                         }
-                        tcs!.SetResult();
+                        _tcs!.SetResult();
                     }
                 }
             }
             catch (OperationCanceledException)
             {
-                logger.LogInformation("Exiting loop due to cancellation");
+                _logger.LogInformation("Exiting loop due to cancellation");
             }
             finally
             {
-                commands = null;
-                lock (sync)
+                _commands = null;
+                lock (_sync)
                 {
-                    cts = null;
+                    _cts = null;
                 }
             }
         }
@@ -232,21 +236,22 @@ namespace Righthand.ViceMonitor.Bridge.Services.Implementation
             /// </summary>
             None
         }
-        async Task<(ViceResponse Response, LastStatusResponse LastStatusResponse)> WaitUntilMatchesResponseAsync(Socket socket, uint targetRequestId, CancellationToken ct)
+
+        private async Task<(ViceResponse Response, LastStatusResponse LastStatusResponse)> WaitUntilMatchesResponseAsync(Socket socket, uint targetRequestId, CancellationToken ct)
         {
-            logger.LogDebug($"Waiting for request id {targetRequestId}");
+            _logger.LogDebug($"Waiting for request id {targetRequestId}");
             LastStatusResponse lastStatusResponse = LastStatusResponse.None;
             while (true)
             {
                 ct.ThrowIfCancellationRequested();
-                (var response, var requestId) = await GetResponseAsync(socket, ct).ConfigureAwait(false);
+                var (response, requestId) = await GetResponseAsync(socket, ct).ConfigureAwait(false);
                 if (requestId == targetRequestId)
                 {
                     if (PerformanceProfiler.IsEnabled)
                     {
                         PerformanceProfiler.Add(new ResponseReadEvent(response.GetType(), IsNested: false, PerformanceProfiler.Ticks));
                     }
-                    logger.LogDebug($"Found matching request id {targetRequestId}");
+                    _logger.LogDebug($"Found matching request id {targetRequestId}");
                     return (response, lastStatusResponse);
                 }
                 else
@@ -266,7 +271,7 @@ namespace Righthand.ViceMonitor.Bridge.Services.Implementation
                     }
                     if (requestId != Constants.BroadcastRequestId)
                     {
-                        logger.LogDebug($"Got unmatched response with non broadcast request id {requestId:x8}");
+                        _logger.LogDebug($"Got unmatched response with non broadcast request id {requestId:x8}");
                     }
                     MessagesHistory.AddsResponseOnly(response);
                     OnViceResponse(new ViceResponseEventArgs(response));
@@ -278,7 +283,7 @@ namespace Righthand.ViceMonitor.Bridge.Services.Implementation
         public T EnqueueCommand<T>(T command, bool resumeOnStopped = false)
             where T: IViceCommand
         {
-            if (commands is null)
+            if (_commands is null)
             {
                 throw new Exception("Service is not running");
             }
@@ -287,7 +292,7 @@ namespace Righthand.ViceMonitor.Bridge.Services.Implementation
             {
                 throw new Exception(string.Join(Environment.NewLine, errors));
             }
-            commands.Post(new EnqueuedCommand(command, resumeOnStopped));
+            _commands.Post(new EnqueuedCommand(command, resumeOnStopped));
             return command;
         }
         /// <summary>
@@ -307,7 +312,7 @@ namespace Righthand.ViceMonitor.Bridge.Services.Implementation
         }
         async Task LoopAsync(Socket socket, ISourceBlock<EnqueuedCommand> source, CancellationToken ct)
         {
-            isRunning = true;
+            _isRunning = true;
             try
             {
                 while (true)
@@ -334,11 +339,11 @@ namespace Righthand.ViceMonitor.Bridge.Services.Implementation
 
                         if (resumeOnStopped && lastStatusResponse == LastStatusResponse.Stopped)
                         {
-                            logger.LogDebug("Resuming VICE");
+                            _logger.LogDebug("Resuming VICE");
                             var exitCommand = new ExitCommand();
                             var (exitResponse, exitLastStatusResponse) = await SendCommandAndWaitForResponse(socket, exitCommand, ct)
                                 .ConfigureAwait(false);
-                            logger.LogDebug("Resumed VICE with status {status}", exitResponse.ErrorCode);
+                            _logger.LogDebug("Resumed VICE with status {status}", exitResponse.ErrorCode);
                             if (exitLastStatusResponse != LastStatusResponse.Resumed)
                             {
                                 // waits two seconds before it times out
@@ -404,8 +409,8 @@ namespace Righthand.ViceMonitor.Bridge.Services.Implementation
         internal async Task<ViceResponse> ProcessUnboundAsync(Socket socket, CancellationToken ct)
         {
             PerformanceProfiler.Add(new DataAvailableEvent(PerformanceDataType.Response, PerformanceProfiler.Ticks));
-            logger.LogDebug("Will process unbound response");
-            (var response, _) = await GetResponseAsync(socket, ct).ConfigureAwait(false);
+            _logger.LogDebug("Will process unbound response");
+            var (response, _) = await GetResponseAsync(socket, ct).ConfigureAwait(false);
             PerformanceProfiler.Add(new ResponseReadEvent(response.GetType(), IsNested: false, PerformanceProfiler.Ticks));
             MessagesHistory.AddsResponseOnly(response);
             OnViceResponse(new ViceResponseEventArgs(response));
@@ -414,20 +419,20 @@ namespace Righthand.ViceMonitor.Bridge.Services.Implementation
 
         private async Task<(ViceResponse Response, LastStatusResponse LastStatusResponse)> SendCommandAndWaitForResponse(Socket socket, IViceCommand command, CancellationToken ct)
         {
-            logger.LogDebug($"Will process command {currentRequestId} of {command.GetType().Name} with request id {currentRequestId}");
-            await SendCommandAsync(socket, currentRequestId, command, ct).ConfigureAwait(false);
+            _logger.LogDebug($"Will process command {_currentRequestId} of {command.GetType().Name} with request id {_currentRequestId}");
+            await SendCommandAsync(socket, _currentRequestId, command, ct).ConfigureAwait(false);
             PerformanceProfiler.Add(new CommandSentEvent(command.GetType(), PerformanceProfiler.Ticks));
-            int id = await MessagesHistory.AddCommandAsync(currentRequestId, command);
+            int id = await MessagesHistory.AddCommandAsync(_currentRequestId, command);
             (command as IDisposable)?.Dispose();
             ViceResponse response;
-            LastStatusResponse lastStatusResponse = LastStatusResponse.None;
+            LastStatusResponse lastStatusResponse;
             switch (command)
             {
                 // list is a special case that collects matching CheckpointInfoResponses
-                case CheckpointListCommand listCommand:
+                case CheckpointListCommand:
                     var info = ImmutableArray<CheckpointInfoResponse>.Empty;
                     while ((
-                        (response, lastStatusResponse) = await WaitUntilMatchesResponseAsync(socket, currentRequestId, ct).ConfigureAwait(false))
+                        (response, lastStatusResponse) = await WaitUntilMatchesResponseAsync(socket, _currentRequestId, ct).ConfigureAwait(false))
                             .response is CheckpointInfoResponse infoResponse)
                     {
                         info = info.Add(infoResponse);
@@ -437,11 +442,11 @@ namespace Righthand.ViceMonitor.Bridge.Services.Implementation
                     response = listResponse with { Info = info };
                     break;
                 default:
-                    (response, lastStatusResponse) = await WaitUntilMatchesResponseAsync(socket, currentRequestId, ct).ConfigureAwait(false);
-                    logger.LogDebug($"Command {currentRequestId} of {command.GetType().Name} got response with result {response.ErrorCode}");
+                    (response, lastStatusResponse) = await WaitUntilMatchesResponseAsync(socket, _currentRequestId, ct).ConfigureAwait(false);
+                    _logger.LogDebug($"Command {_currentRequestId} of {command.GetType().Name} got response with result {response.ErrorCode}");
                     break;
             }
-            currentRequestId++;
+            _currentRequestId++;
             PerformanceProfiler.Add(new CommandCompletedEvent(command.GetType(), PerformanceProfiler.Ticks));
             MessagesHistory.UpdateWithResponse(id, response);
             return (response, lastStatusResponse);
@@ -455,37 +460,37 @@ namespace Righthand.ViceMonitor.Bridge.Services.Implementation
         /// <returns>An instance of <see cref="ManagedBuffer"/> that has to be disposed after use.</returns>
         async Task<(ViceResponse Response, uint RequestId)> GetResponseAsync(Socket socket, CancellationToken ct)
         {
-            using (var headerBuffer = byteArrayPool.GetBuffer(12))
+            using (var headerBuffer = _byteArrayPool.GetBuffer(12))
             {
                 await ReadByteArrayAsync(socket, headerBuffer, ct).ConfigureAwait(false);
-                uint responseBodyLength = responseBuilder.GetResponseBodyLength(headerBuffer.Data.AsSpan());
-                logger.LogDebug($"Response body length is {responseBodyLength:#,##0}B");
+                uint responseBodyLength = _responseBuilder.GetResponseBodyLength(headerBuffer.Data.AsSpan());
+                _logger.LogDebug($"Response body length is {responseBodyLength:#,##0}B");
                 (ViceResponse Response, uint RequestId) result;
                 if (responseBodyLength > 0)
                 {
-                    using (var bodyBuffer = byteArrayPool.GetBuffer(responseBodyLength))
+                    using (var bodyBuffer = _byteArrayPool.GetBuffer(responseBodyLength))
                     {
                         await ReadByteArrayAsync(socket, bodyBuffer, ct);
-                        result = responseBuilder.Build(headerBuffer.Data.AsSpan(), ViceCommand.DefaultApiVersion, 
+                        result = _responseBuilder.Build(headerBuffer.Data.AsSpan(), ViceCommand.DefaultApiVersion, 
                             bodyBuffer.Data.AsSpan()[0..(int)responseBodyLength]);
                     }
                 }
                 else
                 {
-                    result = responseBuilder.Build(headerBuffer.Data.AsSpan(), ViceCommand.DefaultApiVersion, Array.Empty<byte>());
+                    result = _responseBuilder.Build(headerBuffer.Data.AsSpan(), ViceCommand.DefaultApiVersion, Array.Empty<byte>());
                 }
-                logger.LogDebug($"Response is {result.Response?.GetType().Name} with RequestId {result.RequestId}");
+                _logger.LogDebug($"Response is {result.Response.GetType().Name} with RequestId {result.RequestId}");
                 return result;
             }
         }
         async Task SendCommandAsync(Socket socket, uint requestId, IViceCommand command, CancellationToken ct)
         {
-            logger.LogDebug($"Sending command {command.GetType().Name} with RequestId {requestId}");
+            _logger.LogDebug($"Sending command {command.GetType().Name} with RequestId {requestId}");
 
-            (var buffer, var length) = command.GetBinaryData(requestId);
+            var (buffer, length) = command.GetBinaryData(requestId);
             try
             {
-                logger.LogDebug($"Sending command length is {length}");
+                _logger.LogDebug($"Sending command length is {length}");
                 await SendByteArrayAsync(socket, buffer.Data, (int)length, ct).ConfigureAwait(false);
             }
             finally
@@ -535,26 +540,26 @@ namespace Righthand.ViceMonitor.Bridge.Services.Implementation
         /// </summary>
         public async ValueTask DisposeAsync()
         {
-            if (cts is not null && loop is not null)
+            if (_cts is not null && _loop is not null)
             {
-                logger.LogDebug("Dispose async");
-                cts.Cancel();
+                _logger.LogDebug("Dispose async");
+                await _cts.CancelAsync();
                 try
                 {
-                    await loop;
+                    await _loop;
                 }
                 catch (OperationCanceledException)
                 { }
-                logger.LogDebug("Disposed async");
-                lock (sync)
+                _logger.LogDebug("Disposed async");
+                lock (_sync)
                 {
-                    cts = null;
-                    loop = null;
+                    _cts = null;
+                    _loop = null;
                 }
             }
             else
             {
-                logger.LogDebug("Nothing to dispose async");
+                _logger.LogDebug("Nothing to dispose async");
             }
         }
         /// <inheritdoc/>
@@ -562,7 +567,7 @@ namespace Righthand.ViceMonitor.Bridge.Services.Implementation
         {
             var tcs = new TaskCompletionSource<bool>();
             EventHandler<ConnectedChangedEventArgs> handler = null!;
-            handler = (sender, e) =>
+            handler = (_, e) =>
             {
                 tcs.TrySetResult(e.IsConnected);
                 ConnectedChanged -= handler;
@@ -580,8 +585,8 @@ namespace Righthand.ViceMonitor.Bridge.Services.Implementation
         /// </summary>
         public void Dispose()
         {
-            logger.LogDebug("Dispose");
-            cts?.Cancel();
+            _logger.LogDebug("Dispose");
+            _cts?.Cancel();
         }
     }
 }

@@ -12,7 +12,7 @@
         /// <summary>
         /// List of collected events.
         /// </summary>
-        IReadOnlyList<PerformanceEvent> Events { get; }
+        ImmutableArray<PerformanceEvent> Events { get; }
         /// <summary>
         /// Ticks since creation or <see cref="Clear"/> method call.
         /// </summary>

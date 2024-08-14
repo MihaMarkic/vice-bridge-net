@@ -7,12 +7,12 @@ namespace System
         internal static byte AsByte(this bool value) => value ? (byte)1 : (byte)0;
         internal static Task WaitForDataAsync(this Socket socket, CancellationToken ct = default)
         {
-            var completition = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-            socket.BeginReceive(Array.Empty<byte>(), 0, 0, SocketFlags.Peek, ar =>
+            var completion = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            socket.BeginReceive([], 0, 0, SocketFlags.Peek, _ =>
             {
-                completition.TrySetResult();
+                completion.TrySetResult();
             }, null);
-            return completition.Task;
+            return completion.Task;
         }
     }
 }

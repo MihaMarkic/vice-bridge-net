@@ -44,7 +44,7 @@ namespace Righthand.ViceMonitor.Bridge
         /// Byte array of minimal size of <see cref="Size"/>.
         /// </summary>
         public byte[] Data { get; }
-        readonly ArrayPool<byte>? pool;
+        private readonly ArrayPool<byte>? _pool;
         /// <summary>
         /// The requested size of data.
         /// </summary>
@@ -52,13 +52,13 @@ namespace Righthand.ViceMonitor.Bridge
         public uint Size { get; }
         ManagedBuffer(uint size)
         {
-            pool = null;
-            Data = Array.Empty<byte>();
-            Size = 0;
+            _pool = null;
+            Data = [];
+            Size = size;
         }
         internal ManagedBuffer(ArrayPool<byte> pool, byte[] data, uint size)
         {
-            this.pool = pool;
+            this._pool = pool;
             Data = data;
             Size = size;
         }
@@ -67,7 +67,7 @@ namespace Righthand.ViceMonitor.Bridge
         /// </summary>
         public void Dispose()
         {
-            pool?.Return(Data);
+            _pool?.Return(Data);
         }
     }
 }

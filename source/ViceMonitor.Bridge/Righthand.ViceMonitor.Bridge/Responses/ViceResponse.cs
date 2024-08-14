@@ -13,8 +13,8 @@ namespace Righthand.ViceMonitor.Bridge.Responses
     /// <summary>
     /// Response to <see cref="MemoryGetCommand"/>.
     /// </summary>
-    /// <param name="ApiVersion"><inheritdoc /></param>
-    /// <param name="ErrorCode"><inheritdoc /></param>
+    /// <param name="ApiVersion"><inheritdoc cref="Righthand.ViceMonitor.Bridge.Responses.ViceResponse" /></param>
+    /// <param name="ErrorCode"><inheritdoc cref="Righthand.ViceMonitor.Bridge.Responses.ViceResponse" /></param>
     /// <param name="Memory">The memory at the address.</param>
     public record MemoryGetResponse(byte ApiVersion, ErrorCode ErrorCode, ManagedBuffer? Memory) : ViceResponse(ApiVersion, ErrorCode), IDisposable
     {
@@ -119,11 +119,12 @@ namespace Righthand.ViceMonitor.Bridge.Responses
     /// <param name="ErrorCode"><inheritdoc /></param>
     /// /// <param name="Items"></param>
     public record RegistersAvailableResponse(byte ApiVersion, ErrorCode ErrorCode, ImmutableArray<FullRegisterItem> Items) : ViceResponse(ApiVersion, ErrorCode);
+
     /// <summary>
     /// Response to <see cref="Righthand.ViceMonitor.Bridge.Commands.BanksAvailableCommand"/>.
     /// </summary>
-    /// <param name="ApiVersion"><inheritdoc /></param>
-    /// <param name="ErrorCode"><inheritdoc /></param>
+    /// <param name="ApiVersion"><inheritdoc cref="Righthand.ViceMonitor.Bridge.Responses.ViceResponse" /></param>
+    /// <param name="ErrorCode"><inheritdoc cref="Righthand.ViceMonitor.Bridge.Responses.ViceResponse" /></param>
     /// <param name="DebugWidth"></param>
     /// <param name="DebugHeight"></param>
     /// <param name="DebugOffsetX"></param>

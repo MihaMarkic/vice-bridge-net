@@ -13,7 +13,7 @@ namespace Righthand.ViceMonitor.Bridge.Services.Implementation
         /// <inheritdoc/>
         public long Ticks => 0;
         /// <inheritdoc/>
-        public IReadOnlyList<PerformanceEvent> Events => Array.Empty<PerformanceEvent>();
+        public ImmutableArray<PerformanceEvent> Events => ImmutableArray<PerformanceEvent>.Empty;
         /// <inheritdoc/>
         public void Add(PerformanceEvent e)
         { }

@@ -11,14 +11,14 @@ namespace Righthand.ViceMonitor.Bridge.Responses
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Performance", "CA1822:Mark members as static", Justification = "IoC")]
     public class ResponseBuilder
     {
-        readonly ILogger<ResponseBuilder> logger;
+        private readonly ILogger<ResponseBuilder> _logger;
         /// <summary>
         /// Creates an instance of <see cref="ResponseBuilder"/>.
         /// </summary>
         /// <param name="logger"></param>
         public ResponseBuilder(ILogger<ResponseBuilder> logger)
         {
-            this.logger = logger;
+            _logger = logger;
         }
 
         internal uint GetResponseBodyLength(ReadOnlySpan<byte> header) => BitConverter.ToUInt32(header[2..]);
@@ -38,7 +38,7 @@ namespace Righthand.ViceMonitor.Bridge.Responses
             var responseType = (ResponseType)header[6];
             var errorCode = (ErrorCode)header[7];
             uint requestId = BitConverter.ToUInt32(header[8..]);
-            logger.LogDebug($"Decoding {responseType}({(byte)responseType:x2}) with error code {errorCode} and request id {requestId:x4}");
+            _logger.LogDebug($"Decoding {responseType}({(byte)responseType:x2}) with error code {errorCode} and request id {requestId:x4}");
             ViceResponse result = responseType switch
             {
                 ResponseType.MemoryGet          => BuildMemoryGetResponse(apiVersion, errorCode, buffer),
