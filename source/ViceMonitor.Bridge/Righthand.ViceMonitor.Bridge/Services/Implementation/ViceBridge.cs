@@ -131,12 +131,10 @@ namespace Righthand.ViceMonitor.Bridge.Services.Implementation
                     }
                     _commands?.Complete();
                 }
-                else
+
+                lock (_sync)
                 {
-                    lock (_sync)
-                    {
-                        _cts?.Cancel();
-                    }
+                    _cts?.Cancel();
                 }
                 var runner = RunnerTask;
                 if (runner is not null)
@@ -245,7 +243,8 @@ namespace Righthand.ViceMonitor.Bridge.Services.Implementation
             None
         }
 
-        private async Task<(ViceResponse Response, LastStatusResponse LastStatusResponse)> WaitUntilMatchesResponseAsync(Socket socket, uint targetRequestId, CancellationToken ct)
+        private async Task<(ViceResponse Response, LastStatusResponse LastStatusResponse)>
+            WaitUntilMatchesResponseAsync(Socket socket, uint targetRequestId, CancellationToken ct)
         {
             _logger.LogDebug($"Waiting for request id {targetRequestId}");
             LastStatusResponse lastStatusResponse = LastStatusResponse.None;
