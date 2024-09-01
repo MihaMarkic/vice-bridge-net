@@ -118,6 +118,7 @@ namespace ModernVICEPDBMonitor.Playground
                 .Add(new KeyValuePair<string, string>("amg", "Memory get all"))
                 .Add(new KeyValuePair<string, string>("mg", "Memory get"))
                 .Add(new KeyValuePair<string, string>("ms", "Memory set"))
+                .Add(new KeyValuePair<string, string>("banks", "Get available banks"))
                 .Add(new KeyValuePair<string, string>("p", "Ping"))
                 .Add(new KeyValuePair<string, string>("ra", "Registers available"))
                 .Add(new KeyValuePair<string, string>("rg", "Registers get"))
@@ -184,6 +185,9 @@ namespace ModernVICEPDBMonitor.Playground
                         break;
                     case "rse":
                         await RegistersSetAsync(ct, new RegisterItem(byte.MaxValue, ushort.MaxValue));
+                        break;
+                    case "banks":
+                        await GetAvailableBanksAsync(ct);
                         break;
                     case "qv":
                         await QuitViceAsync(ct);
@@ -420,6 +424,18 @@ namespace ModernVICEPDBMonitor.Playground
                 }
             }));
             AnsiConsole.MarkupLine($"Registers: {markup}");
+        }
+        async Task GetAvailableBanksAsync(CancellationToken ct)
+        {
+            var command = bridge.EnqueueCommand(new BanksAvailableCommand());
+            await AwaitWithTimeoutAsync(command.Response, cr =>
+            {
+                AnsiConsole.MarkupLine("[bold]Available banks[/]:");
+                foreach (var b in cr.Response!.Banks)
+                {
+                    AnsiConsole.MarkupLine($"{b.BankId}: {b.Name}");
+                }
+            });
         }
         async Task PingAsync(CancellationToken ct)
         {

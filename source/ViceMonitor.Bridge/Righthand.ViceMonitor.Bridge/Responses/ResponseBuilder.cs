@@ -222,11 +222,11 @@ namespace Righthand.ViceMonitor.Bridge.Responses
                     byte itemSize = itemBuffer[0];
                     ushort bankId = BitConverter.ToUInt16(itemBuffer[1..]);
                     byte nameLength = itemBuffer[3];
-                    string name = Encoding.ASCII.GetString(buffer.Slice(4, nameLength));
+                    string name = Encoding.ASCII.GetString(itemBuffer.Slice(4, nameLength));
 
                     var item = new BankItem(bankId, name);
                     items = items.Add(item);
-                    offset += itemSize + 1;
+                    offset = itemSize + 1;
                 }
             }
             return new BanksAvailableResponse(apiVersion, errorCode, items);
