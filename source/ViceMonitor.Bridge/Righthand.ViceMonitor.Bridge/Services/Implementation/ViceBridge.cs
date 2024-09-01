@@ -141,7 +141,15 @@ namespace Righthand.ViceMonitor.Bridge.Services.Implementation
                 var runner = RunnerTask;
                 if (runner is not null)
                 {
-                    await runner;
+                    try
+                    {
+                        await runner;
+                    }
+                    catch (OperationCanceledException e)
+                    {
+                        // it should throw an OperationCanceledException when cancelled
+                        // don't propagate, just exit
+                    }
                 }
             }
         }
