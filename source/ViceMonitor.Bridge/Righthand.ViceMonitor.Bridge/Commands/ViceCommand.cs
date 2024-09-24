@@ -66,9 +66,9 @@ namespace Righthand.ViceMonitor.Bridge.Commands
         /// <inheritdoc cref="IViceCommand.GetBinaryData(uint)"/>
         public (ManagedBuffer Buffer, uint Length) GetBinaryData(uint requestId)
         {
-            const uint HeaderLength = 11;
+            const uint headerLength = 11;
             uint contentLength = ContentLength;
-            uint totalLength = HeaderLength + contentLength;
+            uint totalLength = headerLength + contentLength;
             var buffer = BufferManager.GetBuffer(totalLength);
             buffer.Data[0] = Constants.STX;
             buffer.Data[1] = ApiVersion;

@@ -12,6 +12,7 @@ using System.Collections.Immutable;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -131,16 +132,14 @@ namespace ModernVICEPDBMonitor.Playground
                 .Add(new KeyValuePair<string, string>("nc", "Nested call"))
                 .Add(new KeyValuePair<string, string>("si", "Step into"))
                 .Add(new KeyValuePair<string, string>("ros", "Resume On Stop"))
-                .Add(new KeyValuePair<string, string>("s", "Starts loaded sample tiny.o"));
+                .Add(new KeyValuePair<string, string>("s", "Starts loaded sample tiny.o"))
+                .Add(new KeyValuePair<string, string>("help", "Help information"));
             bool quit = false;
+            ShowHelp(options);
             while (!quit)
             {
-                foreach (var pair in options)
-                {
-                    AnsiConsole.MarkupLine($"[bold]{pair.Key}[/]  ... {pair.Value}");
-                }
                 string viceStatus = isViceStopped ? "[red]stopped[/]" : "[green]running[/]";
-                AnsiConsole.MarkupLine($"Vice is {viceStatus}");
+                AnsiConsole.MarkupLine(new StringBuilder().Append("Vice is ").Append(viceStatus).ToString());
                 AnsiConsole.MarkupLine("Type [bold]q[/] to end");
                 string? command = Console.ReadLine();
                 switch (command)
@@ -216,6 +215,9 @@ namespace ModernVICEPDBMonitor.Playground
                     case "q":
                         quit = true;
                         break;
+                    case "help":
+                        ShowHelp(options);
+                        break;
                     default:
                         var parts = command.Split(' ').Where(p => !string.IsNullOrWhiteSpace(p)).ToImmutableArray();
                         if (parts.Length > 1)
@@ -256,7 +258,11 @@ namespace ModernVICEPDBMonitor.Playground
                                             {
                                                 enabled = false;
                                             }
-                                            AnsiConsole.MarkupLine($"Setting enabled to [bold]{enabled}[/]");
+                                            AnsiConsole.MarkupLine(new StringBuilder()
+                                                .Append("Setting enabled to [bold]")
+                                                .Append(enabled)
+                                                .Append("[/]")
+                                                .ToString());
                                             await CheckpointToggleAsync(checkpointNumber, enabled, ct);
                                         }
                                         else
@@ -269,6 +275,14 @@ namespace ModernVICEPDBMonitor.Playground
                         }
                         break;
                 }
+            }
+        }
+
+        internal void ShowHelp(ImmutableArray<KeyValuePair<string, string>> options)
+        {
+            foreach (var pair in options)
+            {
+                AnsiConsole.MarkupLine($"[bold]{pair.Key}[/]  ... {pair.Value}");
             }
         }
         internal async Task ResumeOnStopAsync(CancellationToken ct)
