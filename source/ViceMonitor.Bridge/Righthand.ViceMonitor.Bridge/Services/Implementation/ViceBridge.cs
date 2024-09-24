@@ -207,7 +207,6 @@ namespace Righthand.ViceMonitor.Bridge.Services.Implementation
                             socket.Close();
                             socket.Dispose();
                         }
-                        _tcs!.SetResult();
                     }
                 }
             }
@@ -222,6 +221,7 @@ namespace Righthand.ViceMonitor.Bridge.Services.Implementation
                 {
                     _cts = null;
                 }
+                _tcs!.SetResult();
             }
         }
         /// <summary>
