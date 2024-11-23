@@ -134,7 +134,12 @@ namespace Righthand.ViceMonitor.Bridge.Services.Implementation
 
                 lock (_sync)
                 {
-                    _cts?.Cancel();
+                    if (_cts is not null)
+                    {
+                        _cts.Cancel();
+                        _cts.Dispose();
+                        _cts = null;
+                    }
                 }
                 var runner = RunnerTask;
                 if (runner is not null)
@@ -219,6 +224,7 @@ namespace Righthand.ViceMonitor.Bridge.Services.Implementation
                 _commands = null;
                 lock (_sync)
                 {
+                    _cts?.Dispose();
                     _cts = null;
                 }
                 _tcs!.SetResult();
@@ -560,6 +566,7 @@ namespace Righthand.ViceMonitor.Bridge.Services.Implementation
                 _logger.LogDebug("Disposed async");
                 lock (_sync)
                 {
+                    _cts.Dispose();
                     _cts = null;
                     _loop = null;
                 }
@@ -593,7 +600,12 @@ namespace Righthand.ViceMonitor.Bridge.Services.Implementation
         public void Dispose()
         {
             _logger.LogDebug("Dispose");
-            _cts?.Cancel();
+            if (_cts is not null)
+            {
+                _cts.Cancel();
+                _cts.Dispose();
+                _cts = null;
+            }
         }
     }
 }
