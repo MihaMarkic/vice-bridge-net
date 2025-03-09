@@ -13,7 +13,7 @@
     <PackageTags>Vice</PackageTags>
     <Authors>Miha Markic</Authors>
     <Owners>Miha Markic</Owners>
-    <Version>1.0.3</Version>
+    <Version>1.0.4</Version>
     <RepositoryUrl>https://github.com/MihaMarkic/vice-bridge-net.git</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PackageProjectUrl>https://github.com/MihaMarkic/vice-bridge-net</PackageProjectUrl>
