@@ -100,11 +100,8 @@ namespace Righthand.ViceMonitor.Bridge.Services.Implementation
                 _logger.LogDebug("Start called");
                 _tcs = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
                 CancellationToken token;
-                lock (_sync)
-                {
-                    _cts = new CancellationTokenSource();
-                    token = _cts.Token;
-                }
+                _cts = new CancellationTokenSource();
+                token = _cts.Token;
                 _commands = new BufferBlock<EnqueuedCommand>();
                 var task = Task.Factory.StartNew(
                     () => StartAsync(port, _commands, token), 
@@ -132,14 +129,11 @@ namespace Righthand.ViceMonitor.Bridge.Services.Implementation
                     _commands?.Complete();
                 }
 
-                lock (_sync)
+                if (_cts is not null)
                 {
-                    if (_cts is not null)
-                    {
-                        _cts.Cancel();
-                        _cts.Dispose();
-                        _cts = null;
-                    }
+                    await _cts.CancelAsync();
+                    _cts.Dispose();
+                    _cts = null;
                 }
                 var runner = RunnerTask;
                 if (runner is not null)
@@ -169,7 +163,7 @@ namespace Righthand.ViceMonitor.Bridge.Services.Implementation
                     var socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
                     try
                     {
-                        _logger.LogDebug("Waiting for available port");
+                        _logger.LogDebug($"Waiting for available port {port}");
                         await WaitForPort(port, ct).ConfigureAwait(false);
                         _logger.LogDebug("Port acquired");
                         await socket.ConnectAsync("localhost", port, ct);
@@ -222,11 +216,6 @@ namespace Righthand.ViceMonitor.Bridge.Services.Implementation
             finally
             {
                 _commands = null;
-                lock (_sync)
-                {
-                    _cts?.Dispose();
-                    _cts = null;
-                }
                 _tcs!.SetResult();
             }
         }
@@ -557,6 +546,8 @@ namespace Righthand.ViceMonitor.Bridge.Services.Implementation
             {
                 _logger.LogDebug("Dispose async");
                 await _cts.CancelAsync();
+                _cts.Dispose();
+                _cts  = null;
                 try
                 {
                     await _loop;
@@ -566,8 +557,6 @@ namespace Righthand.ViceMonitor.Bridge.Services.Implementation
                 _logger.LogDebug("Disposed async");
                 lock (_sync)
                 {
-                    _cts.Dispose();
-                    _cts = null;
                     _loop = null;
                 }
             }
