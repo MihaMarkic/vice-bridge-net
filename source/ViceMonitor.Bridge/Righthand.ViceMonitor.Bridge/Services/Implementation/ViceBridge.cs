@@ -99,9 +99,8 @@ namespace Righthand.ViceMonitor.Bridge.Services.Implementation
             {
                 _logger.LogDebug("Start called");
                 _tcs = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-                CancellationToken token;
                 _cts = new CancellationTokenSource();
-                token = _cts.Token;
+                var token = _cts.Token;
                 _commands = new BufferBlock<EnqueuedCommand>();
                 var task = Task.Factory.StartNew(
                     () => StartAsync(port, _commands, token), 
