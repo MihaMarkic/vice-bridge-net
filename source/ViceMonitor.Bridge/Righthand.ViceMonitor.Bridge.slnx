@@ -1,0 +1,25 @@
+<Solution>
+  <Folder Name="/Solution Items/">
+    <File Path="../../.appveyor.yml" />
+    <File Path="../../.gitattributes" />
+    <File Path="../../.gitignore" />
+    <File Path="../../build.cake" />
+    <File Path="../../build.ps1" />
+    <File Path="../../build.sh" />
+    <File Path="../../GitReleaseManager.yaml" />
+    <File Path="../../README.md" />
+    <File Path="../../recipe.cake" />
+    <File Path="Directory.Build.props" />
+    <File Path="Directory.Packages.props" />
+  </Folder>
+  <Folder Name="/Test/">
+    <Project Path="Test/Righthand.ViceMonitor.Bridge.Test/Righthand.ViceMonitor.Bridge.Test.csproj" />
+  </Folder>
+  <Project Path="Righthand.ViceMonitor.Bridge.Playground/Righthand.ViceMonitor.Bridge.Playground.csproj">
+    <Build Solution="Release|*" Project="false" />
+  </Project>
+  <Project Path="Righthand.ViceMonitor.Bridge.Trace/Righthand.ViceMonitor.Bridge.Trace.csproj">
+    <Build Solution="Release|*" Project="false" />
+  </Project>
+  <Project Path="Righthand.ViceMonitor.Bridge/Righthand.ViceMonitor.Bridge.csproj" />
+</Solution>
