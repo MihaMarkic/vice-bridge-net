@@ -1,29 +1,25 @@
-﻿using System;
-using System.Threading;
-using System.Threading.Tasks;
-using Microsoft.Extensions.DependencyInjection;
+﻿using Microsoft.Extensions.DependencyInjection;
 using NLog;
+using NLog.Common;
 using Spectre.Console;
 
 namespace ModernVICEPDBMonitor.Playground
 {
-    class Program
+	static class Program
     {
-        static async Task Main(string[] args)
+        static async Task Main()
         {
-            NLog.Common.InternalLogger.LogToConsole = true;
+            InternalLogger.LogToConsole = true;
             var logger = LogManager.GetCurrentClassLogger();
             try
             {
                 AnsiConsole.WriteLine("Initializing");
                 var services = ContainerConfiguration.ConfigureServices();
                 services.AddSingleton<Application>();
-                using (var serviceProvider = services.BuildServiceProvider())
-                {
-                    var application = serviceProvider.GetService<Application>()!;
-                    var cts = new CancellationTokenSource();
-                    await application.RunAsync(cts.Token);
-                }
+                await using var serviceProvider = services.BuildServiceProvider();
+                var application = serviceProvider.GetService<Application>()!;
+                var cts = new CancellationTokenSource();
+                await application.RunAsync(cts.Token);
             }
             catch (Exception ex)
             {
