@@ -28,9 +28,10 @@ skip_branch_with_pr: true
 #---------------------------------#
 #        Branches to build        #
 #---------------------------------#
-branches:
+# Disabled CI for time being
+
+#branches:
   # Whitelist
-  # Disabled CI for time being
   #only:
   #  - develop
   #  - main
