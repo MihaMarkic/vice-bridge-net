@@ -142,7 +142,7 @@ namespace Righthand.ViceMonitor.Bridge.Services.Implementation
                     {
                         await runner;
                     }
-                    catch (OperationCanceledException e)
+                    catch (OperationCanceledException)
                     {
                         // it should throw an OperationCanceledException when cancelled
                         // don't propagate, just exit

@@ -1,4 +1,6 @@
-﻿namespace Righthand.ViceMonitor.Bridge.Services.Abstract
+﻿using System.Collections.Immutable;
+
+namespace Righthand.ViceMonitor.Bridge.Services.Abstract
 {
     /// <summary>
     /// Provides performance data logging.

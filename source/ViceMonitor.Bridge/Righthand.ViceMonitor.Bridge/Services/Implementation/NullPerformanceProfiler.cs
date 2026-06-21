@@ -1,4 +1,5 @@
-﻿using Righthand.ViceMonitor.Bridge.Services.Abstract;
+﻿using System.Collections.Immutable;
+using Righthand.ViceMonitor.Bridge.Services.Abstract;
 
 namespace Righthand.ViceMonitor.Bridge.Services.Implementation
 {
