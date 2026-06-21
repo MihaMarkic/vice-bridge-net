@@ -76,8 +76,8 @@ namespace Righthand.ViceMonitor.Bridge.Trace
         Stopwatch? swResumed;
         Stopwatch? swStopped;
         Stopwatch? swInfo;
-        long minStoppedTicks = 1_000_000, maxStoppedTicks;
-        long minInfoTicks = 1_000_000, maxInfoTicks;
+        //long minStoppedTicks = 1_000_000;
+        //long minInfoTicks = 1_000_000, maxInfoTicks;
         int rounds;
         async void Bridge_ViceResponse(object? sender, ViceResponseEventArgs e)
         {

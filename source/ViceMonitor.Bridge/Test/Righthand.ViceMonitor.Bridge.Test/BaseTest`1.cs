@@ -11,8 +11,8 @@ namespace Righthand.ViceMonitor.Bridge.Test
     public abstract class BaseTest<T>: BaseTest
         where T : class
     {
-        protected Fixture fixture;
-        T target;
+        protected Fixture fixture = null!;
+        T? target;
         public T Target
         {
             [DebuggerStepThrough]
