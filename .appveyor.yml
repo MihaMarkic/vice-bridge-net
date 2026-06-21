@@ -30,11 +30,12 @@ skip_branch_with_pr: true
 #---------------------------------#
 branches:
   # Whitelist
-  only:
-    - develop
-    - main
-    - /release/.*/
-    - /hotfix/.*/
+  # Disabled CI for time being
+  #only:
+  #  - develop
+  #  - main
+  #  - /release/.*/
+  #  - /hotfix/.*/
 
 #---------------------------------#
 #  Build Cache                    #

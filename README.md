@@ -1,13 +1,16 @@
 # VICE Binary Monitor Bridge for .NET
 
-A cross platform .NET 8.0 library that implements a bridge for communication with [VICE](https://vice-emu.sourceforge.io/) [binary monitor](https://vice-emu.sourceforge.io/vice_13.html#SEC281).
+A cross platform .NET 10.0 library that implements a bridge for communication with [VICE](https://vice-emu.sourceforge.io/) [binary monitor](https://vice-emu.sourceforge.io/vice_13.html#SEC281).
 
 [![NuGet](https://img.shields.io/nuget/v/Righthand.Vice.Bridge.svg)](https://www.nuget.org/packages/Righthand.Vice.Bridge)
+
+<!--
+Note: commented out while CI isn't updated.
 
 | Main   | Develop |
 | ------ | ------- |
 | [![Build status](https://ci.appveyor.com/api/projects/status/j4mug5wqaqh4ystn/branch/main?svg=true)](https://ci.appveyor.com/project/MihaMarkic/vice-bridge-net/branch/main) | [![Build status](https://ci.appveyor.com/api/projects/status/j4mug5wqaqh4ystn/branch/develop?svg=true)](https://ci.appveyor.com/project/MihaMarkic/vice-bridge-net/branch/develop) |
-
+-->
 
 Tested(limited on Windows 10) and built against VICE 3.7.
 
@@ -47,6 +50,13 @@ else
 	Console.WriteLine($"An error with code {commandResponse.ErrorCode} occurred");
 }
 ```
+
+## History
+
+1.0.5 (21.6.2026)
+- upgrades to .NET 10
+- updates libraries
+- cleans code
 
 ## A bit more about internal working
 
