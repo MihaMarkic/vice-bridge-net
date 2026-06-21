@@ -30,9 +30,10 @@ skip_branch_with_pr: true
 #---------------------------------#
 # Disabled CI for time being
 
-#branches:
+branches:
   # Whitelist
-  #only:
+  only:
+    - xxx # nonexisting
   #  - develop
   #  - main
   #  - /release/.*/
