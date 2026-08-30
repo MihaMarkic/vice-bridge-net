@@ -1,36 +1,28 @@
-﻿using Microsoft.Extensions.Logging;
+﻿using System.Diagnostics;
+using System.Text;
+using Microsoft.Extensions.Logging;
 using Righthand.ViceMonitor.Bridge;
 using Righthand.ViceMonitor.Bridge.Commands;
 using Righthand.ViceMonitor.Bridge.Responses;
 using Righthand.ViceMonitor.Bridge.Services.Abstract;
-using Righthand.ViceMonitor.Bridge.Services.Implementation;
 using Righthand.ViceMonitor.Bridge.Shared;
 using Spectre.Console;
-using System;
-using System.Collections.Generic;
-using System.Collections.Immutable;
-using System.Diagnostics;
-using System.IO;
-using System.Linq;
-using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
 
 namespace ModernVICEPDBMonitor.Playground
 {
     public class Application
     {
-        readonly ILogger logger;
-        readonly IViceBridge bridge;
-        ImmutableDictionary<byte, FullRegisterItem> registers;
-        uint? tracepointNumber;
-        bool isViceStopped;
-        readonly object sync = new();
+	    private readonly ILogger _logger;
+	    private readonly IViceBridge _bridge;
+	    private ImmutableDictionary<byte, FullRegisterItem> _registers;
+	    private uint? _tracepointNumber;
+	    private bool _isViceStopped;
+	    private readonly Lock _sync = new();
         public Application(ILogger<Application> logger, IViceBridge bridge)
         {
-            this.logger = logger;
-            this.bridge = bridge;
-            registers = ImmutableDictionary<byte, FullRegisterItem>.Empty;
+            this._logger = logger;
+            this._bridge = bridge;
+            _registers = ImmutableDictionary<byte, FullRegisterItem>.Empty;
         }
 
         public async Task RunAsync(CancellationToken ct) 
@@ -42,9 +34,9 @@ namespace ModernVICEPDBMonitor.Playground
                 //var checkPointCommand = new CheckpointSetCommand(0xfce2, 0xfce3,
                 //    StopWhenHit: true, Enabled: true, CpuOperation.Exec, Temporary: true);
                 //bridge.EnqueCommand(checkPointCommand);
-                bridge.Start();
-                bridge.ConnectedChanged += Bridge_ConnectedChanged;
-                bridge.ViceResponse += Bridge_ViceResponse;
+                _bridge.Start();
+                _bridge.ConnectedChanged += Bridge_ConnectedChanged;
+                _bridge.ViceResponse += Bridge_ViceResponse;
                 try
                 {
                     bool run = true;
@@ -63,7 +55,7 @@ namespace ModernVICEPDBMonitor.Playground
                 }
                 finally
                 {
-                    await bridge.DisposeAsync();
+                    await _bridge.DisposeAsync();
                     AnsiConsole.WriteLine("Main loop was canceled");
                 }
             }
@@ -74,7 +66,7 @@ namespace ModernVICEPDBMonitor.Playground
             catch (Exception ex)
             {
                 AnsiConsole.WriteException(ex);
-                logger.LogError(ex, "Main loop failure");
+                _logger.LogError(ex, "Main loop failure");
             }
             Console.WriteLine("App stopped");
         }
@@ -88,19 +80,19 @@ namespace ModernVICEPDBMonitor.Playground
                     OutputRegisters(registers.Items);
                     break;
                 case StoppedResponse:
-                    lock (sync)
+                    lock (_sync)
                     {
-                        isViceStopped = true;
+                        _isViceStopped = true;
                     }
-                    if (tracepointNumber.HasValue)
+                    if (_tracepointNumber.HasValue)
                     {
-                        bridge.EnqueueCommand(new ExitCommand());
+                        _bridge.EnqueueCommand(new ExitCommand());
                     }
                     break;
                 case ResumedResponse:
-                    lock (sync)
+                    lock (_sync)
                     {
-                        isViceStopped = false;
+                        _isViceStopped = false;
                     }
                     break;
             }
@@ -138,7 +130,7 @@ namespace ModernVICEPDBMonitor.Playground
             ShowHelp(options);
             while (!quit)
             {
-                string viceStatus = isViceStopped ? "[red]stopped[/]" : "[green]running[/]";
+                string viceStatus = _isViceStopped ? "[red]stopped[/]" : "[green]running[/]";
                 AnsiConsole.MarkupLine(new StringBuilder().Append("Vice is ").Append(viceStatus).ToString());
                 AnsiConsole.MarkupLine("Type [bold]q[/] to end");
                 string? command = Console.ReadLine();
@@ -158,6 +150,9 @@ namespace ModernVICEPDBMonitor.Playground
                     case "cs":
                         await CheckpointSetAsync(ct);
                         break;
+                    case "ch":
+	                    await CpuHistory(ct);
+	                    break;
                     case "ts":
                         await TracepointSetAsync(ct);
                         break;
@@ -192,7 +187,7 @@ namespace ModernVICEPDBMonitor.Playground
                         await QuitViceAsync(ct);
                         break;
                     case "start":
-                        bridge.Start();
+                        _bridge.Start();
                         break;
                     case "l":
                         await LoadSampleAsync(ct);
@@ -288,20 +283,20 @@ namespace ModernVICEPDBMonitor.Playground
         internal async Task ResumeOnStopAsync(CancellationToken ct)
         {
             //var command = bridge.EnqueueCommand(new RegistersGetCommand(MemSpace.MainMemory), resumeOnStopped: true);
-            var command = bridge.EnqueueCommand(new CheckpointSetCommand(2214, 2213, StopWhenHit: true, Enabled: true,
+            var command = _bridge.EnqueueCommand(new CheckpointSetCommand(2214, 2213, StopWhenHit: true, Enabled: true,
                 CpuOperation: CpuOperation.Load, Temporary: false), true);
             await AwaitWithTimeoutAsync(command.Response, cr => {
                 string viceStatus;
-                lock (sync)
+                lock (_sync)
                 {
-                    viceStatus = isViceStopped ? "[red]stopped[/]" : "[green]running[/]";
+                    viceStatus = _isViceStopped ? "[red]stopped[/]" : "[green]running[/]";
                 }
                 AnsiConsole.MarkupLine($"Got registers, status is {viceStatus}, should resume VICE"); 
             });
         }
         internal async Task StepIntoAsync(CancellationToken ct)
         {
-            var command = bridge.EnqueueCommand(
+            var command = _bridge.EnqueueCommand(
                 new AdvanceInstructionCommand(StepOverSubroutine: false, NumberOfInstructions: 1)); 
             await AwaitWithTimeoutAsync(command.Response, r =>
                 {
@@ -311,7 +306,7 @@ namespace ModernVICEPDBMonitor.Playground
         internal async Task NestedCallAsync(CancellationToken ct)
         {
             var listCommand = new CheckpointListCommand();
-            bridge.EnqueueCommand(listCommand);
+            _bridge.EnqueueCommand(listCommand);
             bool isRunning = true;
             EventHandler<ViceResponseEventArgs> response = (sender, r) =>
             {
@@ -320,7 +315,7 @@ namespace ModernVICEPDBMonitor.Playground
                     case RegistersResponse:
                         AnsiConsole.MarkupLine("Got nested RegistersResponse, enqueuing RegistersAvailableCommand");
                         var availableRegistersCommand = new RegistersAvailableCommand(MemSpace.MainMemory);
-                        bridge.EnqueueCommand(availableRegistersCommand);
+                        _bridge.EnqueueCommand(availableRegistersCommand);
                         _ = AwaitWithTimeoutAsync(availableRegistersCommand.Response, r =>
                         {
                             AnsiConsole.MarkupLine("Got RegistersAvailableCommand response");
@@ -328,7 +323,7 @@ namespace ModernVICEPDBMonitor.Playground
                             {
                                 string status = isRunning ? "[green]running[/]" : "[red]stopped[/]";
                                 AnsiConsole.MarkupLine($"Nested [yellow]resuming[/] on {status}");
-                                bridge.EnqueueCommand(new ExitCommand());
+                                _bridge.EnqueueCommand(new ExitCommand());
                             }
                         });
                         break;
@@ -342,16 +337,16 @@ namespace ModernVICEPDBMonitor.Playground
                         break;
                 }
             };
-            bridge.ViceResponse += response;
+            _bridge.ViceResponse += response;
             await AwaitWithTimeoutAsync(listCommand.Response, r => 
             {
-                bridge.ViceResponse -= response;
+                _bridge.ViceResponse -= response;
                 AnsiConsole.MarkupLine("Done");
                 if (!isRunning)
                 {
                     string status = isRunning ? "[green]running[/]" : "[red]stopped[/]";
                     AnsiConsole.MarkupLine($"Root [yellow]resuming[/] on {status}");
-                    bridge.EnqueueCommand(new ExitCommand());
+                    _bridge.EnqueueCommand(new ExitCommand());
                 }
             });
         }
@@ -378,7 +373,7 @@ namespace ModernVICEPDBMonitor.Playground
         }
         async Task StopBridgeAsync(bool waitForQueueToProcess, CancellationToken ct)
         {
-            var stopTask = bridge.StopAsync(waitForQueueToProcess);
+            var stopTask = _bridge.StopAsync(waitForQueueToProcess);
             bool result = (await Task.WhenAny(stopTask, Task.Delay(5000, ct)) == stopTask);
             if (!result)
             {
@@ -391,39 +386,39 @@ namespace ModernVICEPDBMonitor.Playground
         }
         async Task RegistersAvailableAsync(CancellationToken ct)
         {
-            var command = bridge.EnqueueCommand(new RegistersAvailableCommand(MemSpace.MainMemory));
+            var command = _bridge.EnqueueCommand(new RegistersAvailableCommand(MemSpace.MainMemory));
             await AwaitWithTimeoutAsync(command.Response, cr =>
             {
                 var response = cr.Response!;
                 string markup = string.Join("\n", response.Items.OrderBy(i => i.Id).Select(i => $"\t[bold]{i.Id}[/]:{i.Name} {i.Size}bytes"));
                 AnsiConsole.MarkupLine($"Registers:\n{markup}");
-                registers = response.Items.ToImmutableDictionary(i => i.Id, i => i);
+                _registers = response.Items.ToImmutableDictionary(i => i.Id, i => i);
             });
         }
         async Task StartSampleAsync(CancellationToken ct)
         {
-            var register = registers.Values.Single(r => r.Name == "PC");
+            var register = _registers.Values.Single(r => r.Name == "PC");
             var registerItem = new RegisterItem(register.Id, 0xC000);
             var argument = ImmutableArray<RegisterItem>.Empty.Add(registerItem);
-            var command = bridge.EnqueueCommand(new RegistersSetCommand(MemSpace.MainMemory, argument));
+            var command = _bridge.EnqueueCommand(new RegistersSetCommand(MemSpace.MainMemory, argument));
             await AwaitWithTimeoutAsync(command.Response, cr => OutputRegisters(cr.Response!.Items));
 
         }
         async Task RegistersGetAsync(CancellationToken ct)
         {
-            var command = bridge.EnqueueCommand(new RegistersGetCommand(MemSpace.MainMemory));
+            var command = _bridge.EnqueueCommand(new RegistersGetCommand(MemSpace.MainMemory));
             await AwaitWithTimeoutAsync(command.Response, cr => OutputRegisters(cr.Response!.Items));
         }
         async Task RegistersSetAsync(CancellationToken ct, params RegisterItem[] args)
         {
-            var command = bridge.EnqueueCommand(new RegistersSetCommand(MemSpace.MainMemory, args));
+            var command = _bridge.EnqueueCommand(new RegistersSetCommand(MemSpace.MainMemory, args));
             await AwaitWithTimeoutAsync(command.Response, cr => OutputRegisters(cr.Response!.Items));
         }
         void OutputRegisters(IList<RegisterItem> items)
         {
             string markup = string.Join(" ", items.Select(i => 
             {
-                if (registers.TryGetValue(i.RegisterId, out var register))
+                if (_registers.TryGetValue(i.RegisterId, out var register))
                 {
                     string value = register.Size switch
                     {
@@ -441,7 +436,7 @@ namespace ModernVICEPDBMonitor.Playground
         }
         async Task GetAvailableBanksAsync(CancellationToken ct)
         {
-            var command = bridge.EnqueueCommand(new BanksAvailableCommand());
+            var command = _bridge.EnqueueCommand(new BanksAvailableCommand());
             await AwaitWithTimeoutAsync(command.Response, cr =>
             {
                 AnsiConsole.MarkupLine("[bold]Available banks[/]:");
@@ -454,60 +449,60 @@ namespace ModernVICEPDBMonitor.Playground
         async Task PingAsync(CancellationToken ct)
         {
             var sw = Stopwatch.StartNew();
-            var ping = bridge.EnqueueCommand(new PingCommand());
+            var ping = _bridge.EnqueueCommand(new PingCommand());
             await AwaitWithTimeoutAsync(ping.Response, response => AnsiConsole.MarkupLine($"Ping response: {response.ErrorCode} in {sw.ElapsedMilliseconds:#,##0}ms"));
         }
         async Task LoadSampleAsync(CancellationToken ct)
         {
             var file = Path.Combine(Path.GetDirectoryName(typeof(Application).Assembly.Location)!, "Samples", "tiny.o");
-            var command = bridge.EnqueueCommand(new AutoStartCommand(runAfterLoading: false, 0, file));
+            var command = _bridge.EnqueueCommand(new AutoStartCommand(runAfterLoading: false, 0, file));
             var response = await command.Response;
         }
         async Task ExitAsync(CancellationToken ct)
         {
             var sw = Stopwatch.StartNew();
-            var ping = bridge.EnqueueCommand(new ExitCommand());
+            var ping = _bridge.EnqueueCommand(new ExitCommand());
             await AwaitWithTimeoutAsync(ping.Response, response => AnsiConsole.MarkupLine($"Resume response: {response.ErrorCode} in {sw.ElapsedMilliseconds:#,##0}ms"));
         }
         async Task QuitViceAsync(CancellationToken ct)
         {
             var sw = Stopwatch.StartNew();
-            var ping = bridge.EnqueueCommand(new QuitCommand());
+            var ping = _bridge.EnqueueCommand(new QuitCommand());
             await AwaitWithTimeoutAsync(ping.Response, response => AnsiConsole.MarkupLine($"Quit response: {response.ErrorCode} in {sw.ElapsedMilliseconds:#,##0}ms"));
         }
         async Task CheckpointSetAsync(CancellationToken ct)
         {
-            var setCommand = bridge.EnqueueCommand(new CheckpointSetCommand(0x1000, 0x2000, StopWhenHit: true, Enabled: true,
+            var setCommand = _bridge.EnqueueCommand(new CheckpointSetCommand(0x1000, 0x2000, StopWhenHit: true, Enabled: true,
                CpuOperation: CpuOperation.Load, Temporary: true));
             await AwaitWithTimeoutAsync(setCommand.Response, response => 
                 AnsiConsole.MarkupLine($"Checkpoint set response: {response.ErrorCode} with Checkpoint Number {response.Response?.CheckpointNumber}"));
         }
         async Task TracepointSetAsync(CancellationToken ct)
         {
-            var setCommand = bridge.EnqueueCommand(new CheckpointSetCommand(0xd4fc, 0xd4fc, StopWhenHit: true, Enabled: true,
+            var setCommand = _bridge.EnqueueCommand(new CheckpointSetCommand(0xd4fc, 0xd4fc, StopWhenHit: true, Enabled: true,
                CpuOperation: CpuOperation.Store, Temporary: false));
             await AwaitWithTimeoutAsync(setCommand.Response, response =>
             {
-                tracepointNumber = response.Response?.CheckpointNumber;
+                _tracepointNumber = response.Response?.CheckpointNumber;
                 AnsiConsole.MarkupLine($"Tracepoint set response: {response.ErrorCode} with Checkpoint Number {response.Response?.CheckpointNumber}");
             });
         }
         async Task CheckpointDeleteAsync(uint checkpointNumber, CancellationToken ct)
         {
-            var setCommand = bridge.EnqueueCommand(new CheckpointDeleteCommand(checkpointNumber));
+            var setCommand = _bridge.EnqueueCommand(new CheckpointDeleteCommand(checkpointNumber));
             await AwaitWithTimeoutAsync(setCommand.Response, response => 
                 AnsiConsole.MarkupLine($"Set response: {response.ErrorCode} and response type {response.Response?.GetType().Name}"));
         }
         async Task CheckpointToggleAsync(uint checkpointNumber, bool enabled, CancellationToken ct)
         {
-            var setCommand = bridge.EnqueueCommand(new CheckpointToggleCommand(checkpointNumber, enabled));
+            var setCommand = _bridge.EnqueueCommand(new CheckpointToggleCommand(checkpointNumber, enabled));
             await AwaitWithTimeoutAsync(setCommand.Response, response =>
                 AnsiConsole.MarkupLine($"Set response: {response.ErrorCode} and response type {response.Response?.GetType().Name}"));
         }
         async Task CheckpointListAsync(CancellationToken ct)
         {
             var listCommand = new CheckpointListCommand();
-            bridge.EnqueueCommand(listCommand);
+            _bridge.EnqueueCommand(listCommand);
             Action<CommandResponse<CheckpointListResponse>> onSuccess = cr =>
             {
                 var response = cr.Response;
@@ -525,19 +520,19 @@ namespace ModernVICEPDBMonitor.Playground
         }
         async Task ConditionSetAsync(uint checkpointNumber, string condition, CancellationToken ct)
         {
-            var command = bridge.EnqueueCommand(new ConditionSetCommand(checkpointNumber, condition));
+            var command = _bridge.EnqueueCommand(new ConditionSetCommand(checkpointNumber, condition));
             await AwaitWithTimeoutAsync(command.Response, response =>
                 AnsiConsole.MarkupLine($"Set response: {response.ErrorCode} and response type {response.Response?.GetType().Name}"));
         }
         async Task MemoryGetAsync(CancellationToken ct)
         {
-            var command = bridge.EnqueueCommand(new MemoryGetCommand(0, 0x0812, 0x081A, MemSpace.MainMemory, 0));
+            var command = _bridge.EnqueueCommand(new MemoryGetCommand(0, 0x0812, 0x081A, MemSpace.MainMemory, 0));
             await AwaitWithTimeoutAsync(command.Response, response =>
             {
                 if (response.Response?.Memory is not null)
                 {
                     var buffer = response.Response.Memory.Value;
-                    string data = string.Join(" ", buffer.Data.Take((int)buffer.Size).Select(b => $"${b:X2}"));
+                    string data = string.Join(" ", buffer.Data.Take((int)buffer.Size).Select(b => $"${b:x2}"));
                     AnsiConsole.MarkupLine($"Set response: {response.ErrorCode}: [bold]{data}[/]");
                     response.Response.Memory.Value.Dispose();
                 }
@@ -547,10 +542,35 @@ namespace ModernVICEPDBMonitor.Playground
                 }
             });
         }
+
+        async Task CpuHistory(CancellationToken ct)
+        {
+	        var command = _bridge.EnqueueCommand(new CpuHistoryCommand(MemSpace.MainMemory, 5));
+	        await AwaitWithTimeoutAsync(command.Response, response =>
+	        {
+		        if (response.Response?.Items is not null)
+		        {
+			        for (int i=0; i<response.Response.Items.Length; i++)
+			        {
+				        var item = response.Response.Items[i];
+				        AnsiConsole.MarkupLine($"Command [bold]#{i}[/]");
+				        AnsiConsole.MarkupLine("---------");
+						OutputRegisters(item.RegisterItems);       
+						AnsiConsole.MarkupLine($"[bold]CPU clock[/]: {item.CpuClock}");
+						string instructions = string.Join(" ", item.InstructionData.Select(b => $"${b:x2}"));
+						AnsiConsole.MarkupLine($"[bold]Instruction[/]:  {instructions}");
+			        }
+		        }
+		        else
+		        {
+			        AnsiConsole.MarkupLine($"Set response: {response.ErrorCode} [red]without data[/red]");
+		        }
+	        });
+        }
         async Task AllMemoryGetAsync(CancellationToken ct)
         {
             Stopwatch sw = Stopwatch.StartNew();
-            var command = bridge.EnqueueCommand(new MemoryGetCommand(0, 0x0000, 0xFFFE, MemSpace.MainMemory, 0));
+            var command = _bridge.EnqueueCommand(new MemoryGetCommand(0, 0x0000, 0xFFFE, MemSpace.MainMemory, 0));
             await AwaitWithTimeoutAsync(command.Response, response =>
             {
                 if (response.Response?.Memory is not null)
@@ -578,7 +598,7 @@ namespace ModernVICEPDBMonitor.Playground
                     buffer.Data[i] = (byte)i;
                 }
                 counter++;
-                var command = bridge.EnqueueCommand(
+                var command = _bridge.EnqueueCommand(
                     new MemorySetCommand(0, 0x0812, MemSpace.MainMemory, 0, buffer));
                 await AwaitWithTimeoutAsync(command.Response, response =>
                     AnsiConsole.MarkupLine($"Set response: {response.ErrorCode} and response type {response.Response?.GetType().Name}"));
@@ -587,7 +607,7 @@ namespace ModernVICEPDBMonitor.Playground
         async Task ViceInfoAsync(CancellationToken ct)
         {
             var command = new InfoCommand();
-            bridge.EnqueueCommand(command);
+            _bridge.EnqueueCommand(command);
             Action<CommandResponse<InfoResponse>> onSuccess = cr =>
             {
                 var response = cr.Response!;
@@ -598,7 +618,7 @@ namespace ModernVICEPDBMonitor.Playground
         async Task GetDisplayAsync(CancellationToken ct)
         {
             var command = new DisplayGetCommand(UseVic: true, ImageFormat.Indexed);
-            bridge.EnqueueCommand(command);
+            _bridge.EnqueueCommand(command);
             Action<CommandResponse<DisplayGetResponse>> onSuccess = async commandResponse =>
             {
 
@@ -637,7 +657,7 @@ namespace ModernVICEPDBMonitor.Playground
         }
         void UpdateConnectedState()
         {
-            AnsiConsole.MarkupLine($"Bridge is {(bridge.IsConnected ? "[green]connected[/]": "[red]disconnected[/]")}");
+            AnsiConsole.MarkupLine($"Bridge is {(_bridge.IsConnected ? "[green]connected[/]": "[red]disconnected[/]")}");
         }
     }
 }

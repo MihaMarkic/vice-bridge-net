@@ -98,6 +98,10 @@
         /// </summary>
         Info = 0x85,
         /// <summary>
+        /// e_MON_CMD_CPUHISTORY_GET
+        /// </summary>
+        CpuHistory = 0x86,
+        /// <summary>
         /// e_MON_CMD_EXIT
         /// </summary>
         Exit = 0xaa,

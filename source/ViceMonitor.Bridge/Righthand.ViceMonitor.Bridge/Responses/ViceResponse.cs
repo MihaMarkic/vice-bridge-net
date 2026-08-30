@@ -173,3 +173,11 @@ public record InfoResponse(byte ApiVersion, ErrorCode ErrorCode, byte Major, byt
 /// <param name="ApiVersion"><inheritdoc /></param>
 /// <param name="ErrorCode"><inheritdoc /></param>
 public record EmptyViceResponse(byte ApiVersion, ErrorCode ErrorCode) : ViceResponse(ApiVersion, ErrorCode);
+
+/// <summary>
+/// Response MON_RESPONSE_CPUHISTORY_GET to <see cref="CpuHistoryCommand"/>.
+/// </summary>
+/// <param name="ApiVersion"></param>
+/// <param name="ErrorCode"></param>
+/// <param name="Items"></param>
+public record CpuHistoryResponse(byte ApiVersion, ErrorCode ErrorCode, ImmutableArray<CpuHistoryItem> Items): ViceResponse(ApiVersion, ErrorCode);

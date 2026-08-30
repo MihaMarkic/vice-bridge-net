@@ -94,6 +94,10 @@ public enum ResponseType: byte
 	/// </summary>
 	Info                                = 0x85,
 	/// <summary>
+	/// MON_RESPONSE_CPUHISTORY_GET
+	/// </summary>
+	CpuHistory							= 0x86,
+	/// <summary>
 	/// MON_RESPONSE_EXIT
 	/// </summary>
 	Exit                                = 0xaa,
