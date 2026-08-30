@@ -53,6 +53,9 @@ else
 
 ## History
 
+1.1.0 (30.8.2026)
+- adds [CPU History command](https://github.com/MihaMarkic/vice-bridge-net/issues/28), VICE 3.10 is required for this command
+
 1.0.5 (21.6.2026)
 - upgrades to .NET 10
 - updates libraries
