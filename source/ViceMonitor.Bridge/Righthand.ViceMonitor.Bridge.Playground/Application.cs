@@ -108,6 +108,7 @@ namespace ModernVICEPDBMonitor.Playground
                 .Add(new KeyValuePair<string, string>("cd", "Checkpoint delete"))
                 .Add(new KeyValuePair<string, string>("ct", "Checkpoint toggle"))
                 .Add(new KeyValuePair<string, string>("os", "Condition set"))
+                .Add(new KeyValuePair<string, string>("ch", "CPU history"))
                 .Add(new KeyValuePair<string, string>("amg", "Memory get all"))
                 .Add(new KeyValuePair<string, string>("mg", "Memory get"))
                 .Add(new KeyValuePair<string, string>("ms", "Memory set"))
@@ -545,7 +546,7 @@ namespace ModernVICEPDBMonitor.Playground
 
         async Task CpuHistory(CancellationToken ct)
         {
-	        var command = _bridge.EnqueueCommand(new CpuHistoryCommand(MemSpace.MainMemory, 5));
+	        var command = _bridge.EnqueueCommand(new CpuHistoryCommand(MemSpace.MainMemory, 1));
 	        await AwaitWithTimeoutAsync(command.Response, response =>
 	        {
 		        if (response.Response?.Items is not null)
