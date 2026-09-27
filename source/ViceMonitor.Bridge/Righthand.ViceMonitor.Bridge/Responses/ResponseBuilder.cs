@@ -38,7 +38,7 @@ public class ResponseBuilder
 		var responseType = (ResponseType)header[6];
 		var errorCode = (ErrorCode)header[7];
 		uint requestId = BitConverter.ToUInt32(header[8..]);
-		_logger.LogDebug($"Decoding {responseType}({(byte)responseType:x2}) with error code {errorCode} and request id {requestId:x4}");
+		_logger.LogDebug("Decoding {ResponseType}({ResponseTypeHex:x2}) with error code {ErrorCode} and request id {RequestId:x4}", responseType, (byte)responseType, errorCode, requestId);
 		ViceResponse result = responseType switch
 		{
 			ResponseType.MemoryGet          => BuildMemoryGetResponse(apiVersion, errorCode, buffer),
@@ -188,6 +188,7 @@ public class ResponseBuilder
 	}
 	internal JamResponse BuildJamResponse(byte apiVersion, ErrorCode errorCode, ReadOnlySpan<byte> buffer)
 	{
+		_logger.LogDebug($"{errorCode}");
 		if (errorCode == ErrorCode.OK)
 		{
 			return new JamResponse(apiVersion, errorCode, ProgramCounterPosition: BitConverter.ToUInt16(buffer));

@@ -19,7 +19,7 @@
   </ItemGroup>
   <!-- tests -->
   <ItemGroup>
-    <PackageVersion Include="AutoFixture.AutoNSubstitute" Version="4.18.1" />
+    <PackageVersion Include="AutoFixture.AutoNSubstitute" Version="5.0.0-rc.1" />
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.10.1" />
     <PackageVersion Include="NSubstitute" Version="6.2.0" />
     <PackageVersion Include="NUnit" Version="4.6.1" />
