@@ -49,9 +49,9 @@ namespace Righthand.ViceMonitor.Bridge.Commands
         /// <inheritdoc cref="IViceCommand.SetResult(ViceResponse)"/>
         void IViceCommand.SetResult(ViceResponse response)
         {
-            if (response is TResponse && response.ErrorCode == ErrorCode.OK)
+            if (response is TResponse { ErrorCode: ErrorCode.OK } viceResponse)
             {
-                tcs.SetResult(new CommandResponse<TResponse>((TResponse)response));
+                tcs.SetResult(new CommandResponse<TResponse>(viceResponse));
             }
             else
             {

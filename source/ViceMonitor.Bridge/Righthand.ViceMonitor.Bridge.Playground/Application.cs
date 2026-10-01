@@ -14,14 +14,16 @@ namespace ModernVICEPDBMonitor.Playground
     {
 	    private readonly ILogger _logger;
 	    private readonly IViceBridge _bridge;
+        private readonly ResponseBuilder _responseBuilder;
 	    private ImmutableDictionary<byte, FullRegisterItem> _registers;
 	    private uint? _tracepointNumber;
 	    private bool _isViceStopped;
 	    private readonly Lock _sync = new();
-        public Application(ILogger<Application> logger, IViceBridge bridge)
+        public Application(ILogger<Application> logger, IViceBridge bridge, ResponseBuilder responseBuilder)
         {
-            this._logger = logger;
-            this._bridge = bridge;
+            _logger = logger;
+            _bridge = bridge;
+            _responseBuilder = responseBuilder;
             _registers = ImmutableDictionary<byte, FullRegisterItem>.Empty;
         }
 
@@ -545,27 +547,36 @@ namespace ModernVICEPDBMonitor.Playground
 
         async Task CpuHistory(CancellationToken ct)
         {
-	        var command = _bridge.EnqueueCommand(new CpuHistoryCommand(MemSpace.MainMemory, 5));
-	        await AwaitWithTimeoutAsync(command.Response, response =>
-	        {
-		        if (response.Response?.Items is not null)
-		        {
-			        for (int i=0; i<response.Response.Items.Length; i++)
-			        {
-				        var item = response.Response.Items[i];
-				        AnsiConsole.MarkupLine($"Command [bold]#{i}[/]");
-				        AnsiConsole.MarkupLine("---------");
-						OutputRegisters(item.RegisterItems);       
-						AnsiConsole.MarkupLine($"[bold]CPU clock[/]: {item.CpuClock}");
-						string instructions = string.Join(" ", item.InstructionData.Select(b => $"${b:x2}"));
-						AnsiConsole.MarkupLine($"[bold]Instruction[/]:  {instructions}");
-			        }
-		        }
-		        else
-		        {
-			        AnsiConsole.MarkupLine($"Set response: {response.ErrorCode} [red]without data[/red]");
-		        }
-	        });
+            var command = _bridge.EnqueueCommand(new CpuHistoryCommand(MemSpace.MainMemory, 5));
+            await AwaitWithTimeoutAsync(command.Response, response =>
+            {
+                var cpuHistoryResponse = response.Response;
+                try
+                {
+                    var items = cpuHistoryResponse?.ParseContent(_responseBuilder);
+                    if (items is not null)
+                    {
+                        for (int i = 0; i < items.Value.Length; i++)
+                        {
+                            var item = items.Value[i];
+                            AnsiConsole.MarkupLine($"Command [bold]#{i}[/]");
+                            AnsiConsole.MarkupLine("---------");
+                            OutputRegisters(item.RegisterItems);
+                            AnsiConsole.MarkupLine($"[bold]CPU clock[/]: {item.CpuClock}");
+                            string instructions = string.Join(" ", item.InstructionData.Select(b => $"${b:x2}"));
+                            AnsiConsole.MarkupLine($"[bold]Instruction[/]:  {instructions}");
+                        }
+                    }
+                    else
+                    {
+                        AnsiConsole.MarkupLine($"Set response: {response.ErrorCode} [red]without data[/red]");
+                    }
+                }
+                finally
+                {
+                    cpuHistoryResponse?.Dispose();
+                }
+            });
         }
         async Task AllMemoryGetAsync(CancellationToken ct)
         {

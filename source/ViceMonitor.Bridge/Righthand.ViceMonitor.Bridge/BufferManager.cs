@@ -62,6 +62,15 @@ public readonly struct ManagedBuffer: IDisposable
 		Data = data;
 		Size = size;
 	}
+
+	/// <summary>
+	/// Returns content as <see cref="ReadOnlySpan{byte}"/>.
+	/// </summary>
+	/// <returns></returns>
+	public ReadOnlySpan<byte> AsSpan()
+	{
+		return new ReadOnlySpan<byte>(Data, 0, (int)Size);
+	}
 	/// <summary>
 	/// Releases all resources used by the <see cref="ManagedBuffer"/>.
 	/// </summary>

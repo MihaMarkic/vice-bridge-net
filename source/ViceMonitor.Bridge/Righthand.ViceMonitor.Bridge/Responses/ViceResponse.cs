@@ -175,9 +175,36 @@ public record InfoResponse(byte ApiVersion, ErrorCode ErrorCode, byte Major, byt
 public record EmptyViceResponse(byte ApiVersion, ErrorCode ErrorCode) : ViceResponse(ApiVersion, ErrorCode);
 
 /// <summary>
-/// Response MON_RESPONSE_CPUHISTORY_GET to <see cref="CpuHistoryCommand"/>.
+/// Response MON_RESPONSE_CPUHISTORY_GET to <see cref="CpuHistoryCommand"/> as buffer.
 /// </summary>
 /// <param name="ApiVersion"></param>
 /// <param name="ErrorCode"></param>
-/// <param name="Items"></param>
-public record CpuHistoryResponse(byte ApiVersion, ErrorCode ErrorCode, ImmutableArray<CpuHistoryItem> Items): ViceResponse(ApiVersion, ErrorCode);
+/// <param name="Buffer"></param>
+/// <remarks>
+/// Object has to be disposed once it is processed to free memory occupied by <see cref="Buffer"/>.
+/// </remarks>
+public record CpuHistoryBufferResponse(byte ApiVersion, ErrorCode ErrorCode, ManagedBuffer? Buffer)
+	: ViceResponse(ApiVersion, ErrorCode)
+{
+	/// <summary>
+	/// Parses buffer and returns an array of <see cref="CpuHistoryItem"/>. 
+	/// </summary>
+	/// <returns></returns>
+	public  ImmutableArray<CpuHistoryItem> ParseContent(ResponseBuilder builder)
+	{
+		if (Buffer is null)
+		{
+			return [];
+		}
+		
+		ReadOnlySpan<byte> buffer = Buffer.Value.Data.AsSpan();
+		return builder.BuildCpuHistoryResponse(buffer);
+	}
+	/// <summary>
+	/// Releases all resources used by the <see cref="DisplayGetResponse"/>.
+	/// </summary>
+	public void Dispose()
+	{
+		Buffer?.Dispose();
+	}
+}

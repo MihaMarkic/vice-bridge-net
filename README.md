@@ -53,6 +53,9 @@ else
 
 ## History
 
+1.1.1 (1.10.2026)
+- returns a buffer by default (without parsing) for [CPU History command](https://github.com/MihaMarkic/vice-bridge-net/issues/28), because it might be simply saved to disk for later parsing. Parsing is on demand through its ParseContent function. Also, CpuHistoryBufferResponse should be disposed. 
+
 1.1.0 (30.8.2026)
 - adds [CPU History command](https://github.com/MihaMarkic/vice-bridge-net/issues/28), VICE 3.10 is required for this command
 

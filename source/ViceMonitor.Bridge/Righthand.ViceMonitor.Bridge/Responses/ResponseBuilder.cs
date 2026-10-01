@@ -1,14 +1,17 @@
-﻿using System.Text;
+﻿using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
+using System.Text;
 using Microsoft.Extensions.Logging;
 using Righthand.ViceMonitor.Bridge.Commands;
 using Righthand.ViceMonitor.Bridge.Shared;
+using Constants = Righthand.ViceMonitor.Bridge.Commands.Constants;
 
 namespace Righthand.ViceMonitor.Bridge.Responses;
 
 /// <summary>
 /// Builds response objects from data arrays.
 /// </summary>
-[System.Diagnostics.CodeAnalysis.SuppressMessage("Performance", "CA1822:Mark members as static", Justification = "IoC")]
+[SuppressMessage("Performance", "CA1822:Mark members as static", Justification = "IoC")]
 public class ResponseBuilder
 {
 	private readonly ILogger<ResponseBuilder> _logger;
@@ -67,7 +70,7 @@ public class ResponseBuilder
 			ResponseType.Quit               => BuildEmptyResponse(apiVersion, errorCode),
 			ResponseType.Reset              => BuildEmptyResponse(apiVersion, errorCode),
 			ResponseType.AutoStart          => BuildAutoStartResponse(apiVersion, errorCode),
-			ResponseType.CpuHistory			=> BuildCpuHistoryResponse(apiVersion, errorCode, buffer),
+			ResponseType.CpuHistory			=> BuildCpuHistoryBufferResponse(apiVersion, errorCode, buffer),
 			//_ => throw new Exception($"Unknown response type {responseType}"),
 			_ => new EmptyViceResponse(apiVersion, errorCode),
 		};
@@ -143,7 +146,7 @@ public class ResponseBuilder
 		for (ushort i = 0; i < itemsCount; i++)
 		{
 			var length = ReadByte(ref buffer);
-			System.Diagnostics.Debug.Assert(length == 3);
+			Debug.Assert(length == 3);
 			var item = new RegisterItem(
 				//Size: itemBuffer[0], should be 3
 				RegisterId: ReadByte(ref buffer),
@@ -309,20 +312,33 @@ public class ResponseBuilder
 		return new InfoResponse(apiVersion, errorCode, default, default, default, default, default);
 	}
 
-	internal CpuHistoryResponse BuildCpuHistoryResponse(byte apiVersion, ErrorCode errorCode, ReadOnlySpan<byte> buffer)
+	/// <summary>
+	/// Provides parsing for CPU history response.
+	/// </summary>
+	/// <param name="buffer"></param>
+	/// <returns></returns>
+	internal ImmutableArray<CpuHistoryItem> BuildCpuHistoryResponse(ReadOnlySpan<byte> buffer)
 	{
-		if (errorCode == ErrorCode.OK)
-		{
 			uint itemCount = ReadUInt32(ref buffer);
 			var items = new CpuHistoryItem[itemCount];
 			for (uint i = 0; i < itemCount; i++)
 			{
 				items[i] = BuildCpuHistoryItem(ref buffer);								
 			}
-			return new CpuHistoryResponse(apiVersion, errorCode, [..items]);
+
+			return [.. items];
+	}
+	
+	internal CpuHistoryBufferResponse BuildCpuHistoryBufferResponse(byte apiVersion, ErrorCode errorCode, ReadOnlySpan<byte> buffer)
+	{
+		if (errorCode == ErrorCode.OK)
+		{
+			var memory = BufferManager.GetBuffer((uint)buffer.Length);
+			buffer.CopyTo(memory.Data);
+			return new CpuHistoryBufferResponse(apiVersion, errorCode, memory);
 		}
 
-		return new CpuHistoryResponse(apiVersion, errorCode, []);
+		return new CpuHistoryBufferResponse(apiVersion, errorCode, null);
 	}
 
 	internal CpuHistoryItem BuildCpuHistoryItem(ref ReadOnlySpan<byte> buffer)

@@ -8,7 +8,7 @@ namespace Righthand.ViceMonitor.Bridge.Commands;
 /// <param name="MemSpace"></param>
 /// <param name="ItemsCount"></param>
 /// <remarks>Minimum VICE version: 3.10</remarks>
-public record CpuHistoryCommand(MemSpace MemSpace, uint ItemsCount) : ViceCommand<CpuHistoryResponse>(CommandType.CpuHistory)
+public record CpuHistoryCommand(MemSpace MemSpace, uint ItemsCount) : ViceCommand<CpuHistoryBufferResponse>(CommandType.CpuHistory)
 {
 	/// <inheritdoc />
 	public override uint ContentLength { get; } = sizeof(byte) + sizeof(uint);
