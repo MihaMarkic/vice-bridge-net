@@ -51,7 +51,7 @@ public interface IViceBridge : IAsyncDisposable, IDisposable
     /// during command execution.</param>
     /// <returns>An instance of passed in command.</returns>
     T EnqueueCommand<T>(T command, bool resumeOnStopped = false)
-        where T : IViceCommand;
+        where T : class, IViceCommand;
     /// <summary>
     /// Occurs when an unbound event arrived.
     /// </summary>

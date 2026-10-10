@@ -162,7 +162,7 @@ public sealed class ViceBridge: IViceBridge
 				var socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
 				try
 				{
-					_logger.LogDebug($"Waiting for available port {port}");
+					_logger.LogDebug("Waiting for available port {Port}", port);
 					await WaitForPort(port, ct).ConfigureAwait(false);
 					_logger.LogDebug("Port acquired");
 					await socket.ConnectAsync("localhost", port, ct);
@@ -240,7 +240,7 @@ public sealed class ViceBridge: IViceBridge
 	private async Task<(ViceResponse Response, LastStatusResponse LastStatusResponse)>
 		WaitUntilMatchesResponseAsync(Socket socket, uint targetRequestId, CancellationToken ct)
 	{
-		_logger.LogDebug($"Waiting for request id {targetRequestId}");
+		_logger.LogDebug("Waiting for request id {TargetRequestId}", targetRequestId);
 		LastStatusResponse lastStatusResponse = LastStatusResponse.None;
 		while (true)
 		{
@@ -252,7 +252,7 @@ public sealed class ViceBridge: IViceBridge
 				{
 					PerformanceProfiler.Add(new ResponseReadEvent(response.GetType(), IsNested: false, PerformanceProfiler.Ticks));
 				}
-				_logger.LogDebug($"Found matching request id {targetRequestId}");
+				_logger.LogDebug("Found matching request id {TargetRequestId}", targetRequestId);
 				return (response, lastStatusResponse);
 			}
 			else
@@ -272,7 +272,7 @@ public sealed class ViceBridge: IViceBridge
 				}
 				if (requestId != Constants.BroadcastRequestId)
 				{
-					_logger.LogDebug($"Got unmatched response with non broadcast request id {requestId:x8}");
+					_logger.LogDebug("Got unmatched response with non broadcast request id {RequestId:x8}", requestId);
 				}
 				MessagesHistory.AddsResponseOnly(response);
 				OnViceResponse(new ViceResponseEventArgs(response));
@@ -282,7 +282,7 @@ public sealed class ViceBridge: IViceBridge
 	/// <inheritdoc />
 	/// <threadsafety>Method is thread safe.</threadsafety>
 	public T EnqueueCommand<T>(T command, bool resumeOnStopped = false)
-		where T: IViceCommand
+		where T: class, IViceCommand
 	{
 		if (_commands is null)
 		{
@@ -295,21 +295,6 @@ public sealed class ViceBridge: IViceBridge
 		}
 		_commands.Post(new EnqueuedCommand(command, resumeOnStopped));
 		return command;
-	}
-	/// <summary>
-	/// Checks if socket is still connected
-	/// </summary>
-	/// <param name="socket"></param>
-	/// <returns></returns>
-	/// <remarks>https://stackoverflow.com/questions/2661764/how-to-check-if-a-socket-is-connected-disconnected-in-c</remarks>
-	bool CheckIfSocketConnected(Socket socket)
-	{
-		bool part1 = socket.Poll(1000, SelectMode.SelectRead);
-		bool part2 = (socket.Available == 0);
-		if (part1 && part2)
-			return false;
-		else
-			return true;
 	}
 	async Task LoopAsync(Socket socket, ISourceBlock<EnqueuedCommand> source, CancellationToken ct)
 	{
@@ -344,7 +329,7 @@ public sealed class ViceBridge: IViceBridge
 						var exitCommand = new ExitCommand();
 						var (exitResponse, exitLastStatusResponse) = await SendCommandAndWaitForResponse(socket, exitCommand, ct)
 							.ConfigureAwait(false);
-						_logger.LogDebug("Resumed VICE with status {status}", exitResponse.ErrorCode);
+						_logger.LogDebug("Resumed VICE with status {Status}", exitResponse.ErrorCode);
 						if (exitLastStatusResponse != LastStatusResponse.Resumed)
 						{
 							// waits two seconds before it times out
@@ -420,7 +405,7 @@ public sealed class ViceBridge: IViceBridge
 
 	private async Task<(ViceResponse Response, LastStatusResponse LastStatusResponse)> SendCommandAndWaitForResponse(Socket socket, IViceCommand command, CancellationToken ct)
 	{
-		_logger.LogDebug($"Will process command {_currentRequestId} of {command.GetType().Name} with request id {_currentRequestId}");
+		_logger.LogDebug("Will process command {CurrentRequestId} of {Name} with request id {U}", _currentRequestId, command.GetType().Name, _currentRequestId);
 		await SendCommandAsync(socket, _currentRequestId, command, ct).ConfigureAwait(false);
 		PerformanceProfiler.Add(new CommandSentEvent(command.GetType(), PerformanceProfiler.Ticks));
 		int id = await MessagesHistory.AddCommandAsync(_currentRequestId, command);
@@ -446,7 +431,7 @@ public sealed class ViceBridge: IViceBridge
 				break;
 			default:
 				(response, lastStatusResponse) = await WaitUntilMatchesResponseAsync(socket, _currentRequestId, ct).ConfigureAwait(false);
-				_logger.LogDebug($"Command {_currentRequestId} of {command.GetType().Name} got response with result {response.ErrorCode}");
+				_logger.LogDebug("Command {CurrentRequestId} of {Name} got response with result {ResponseErrorCode}", _currentRequestId, command.GetType().Name, response.ErrorCode);
 				break;
 		}
 		_currentRequestId++;
@@ -466,7 +451,7 @@ public sealed class ViceBridge: IViceBridge
 		using var headerBuffer = _byteArrayPool.GetBuffer(12);
 		await ReadByteArrayAsync(socket, headerBuffer, ct).ConfigureAwait(false);
 		uint responseBodyLength = _responseBuilder.GetResponseBodyLength(headerBuffer.Data.AsSpan());
-		_logger.LogDebug($"Response body length is {responseBodyLength:#,##0}B");
+		_logger.LogDebug("Response body length is {ResponseBodyLength:#,##0}B", responseBodyLength);
 		(ViceResponse Response, uint RequestId) result;
 		if (responseBodyLength > 0)
 		{
@@ -479,17 +464,17 @@ public sealed class ViceBridge: IViceBridge
 		{
 			result = _responseBuilder.Build(headerBuffer.Data.AsSpan(), ViceCommand.DefaultApiVersion, Array.Empty<byte>());
 		}
-		_logger.LogDebug($"Response is {result.Response.GetType().Name} with RequestId {result.RequestId}");
+		_logger.LogDebug("Response is {Name} with RequestId {ResultRequestId}", result.Response.GetType().Name, result.RequestId);
 		return result;
 	}
 	async Task SendCommandAsync(Socket socket, uint requestId, IViceCommand command, CancellationToken ct)
 	{
-		_logger.LogDebug($"Sending command {command.CommandType} with RequestId {requestId}");
+		_logger.LogDebug("Sending command {CommandCommandType} with RequestId {RequestId}", command.CommandType, requestId);
 
 		var (buffer, length) = command.GetBinaryData(requestId);
 		try
 		{
-			_logger.LogDebug($"Sending command length is {length}");
+			_logger.LogDebug("Sending command length is {Length}", length);
 			await SendByteArrayAsync(socket, buffer.Data, (int)length, ct).ConfigureAwait(false);
 		}
 		finally

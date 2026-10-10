@@ -24,6 +24,9 @@
     <None Update="Samples\tiny.o">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+      <None Update="Samples\main.prg">
+          <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      </None>
     <None Update="Samples\trigono.o">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>

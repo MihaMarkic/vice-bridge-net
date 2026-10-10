@@ -103,6 +103,7 @@ namespace ModernVICEPDBMonitor.Playground
         async Task ShowMenuAsync(CancellationToken ct)
         {
             var options = ImmutableArray<KeyValuePair<string, string>>.Empty
+	            .Add(new KeyValuePair<string, string>("a", "Advance 5 instructions"))
                 .Add(new KeyValuePair<string, string>("dg", "Display get"))
                 .Add(new KeyValuePair<string, string>("vi", "VICE info"))
                 .Add(new KeyValuePair<string, string>("cl", "Checkpoint list"))
@@ -110,6 +111,7 @@ namespace ModernVICEPDBMonitor.Playground
                 .Add(new KeyValuePair<string, string>("cd", "Checkpoint delete"))
                 .Add(new KeyValuePair<string, string>("ct", "Checkpoint toggle"))
                 .Add(new KeyValuePair<string, string>("os", "Condition set"))
+                .Add(new KeyValuePair<string, string>("ch", "CPU history"))
                 .Add(new KeyValuePair<string, string>("amg", "Memory get all"))
                 .Add(new KeyValuePair<string, string>("mg", "Memory get"))
                 .Add(new KeyValuePair<string, string>("ms", "Memory set"))
@@ -140,6 +142,9 @@ namespace ModernVICEPDBMonitor.Playground
                 {
                     case null:
                         break;
+                    case "a":
+	                    await AdvanceInstructionsAsync(ct);
+	                    break;
                     case "dg":
                         await GetDisplayAsync(ct);
                         break;
@@ -296,6 +301,16 @@ namespace ModernVICEPDBMonitor.Playground
                 AnsiConsole.MarkupLine($"Got registers, status is {viceStatus}, should resume VICE"); 
             });
         }
+
+        internal async Task AdvanceInstructionsAsync(CancellationToken ct)
+        {
+	        AnsiConsole.MarkupLine("Advancing 5 instructions");
+	        var command = _bridge.EnqueueCommand(new AdvanceInstructionCommand(false, 5));
+	        await AwaitWithTimeoutAsync(command.Response, r =>
+	        {
+		        AnsiConsole.MarkupLine("Done");
+	        });
+        }
         internal async Task StepIntoAsync(CancellationToken ct)
         {
             var command = _bridge.EnqueueCommand(
@@ -399,8 +414,13 @@ namespace ModernVICEPDBMonitor.Playground
         }
         async Task StartSampleAsync(CancellationToken ct)
         {
-            var register = _registers.Values.Single(r => r.Name == "PC");
-            var registerItem = new RegisterItem(register.Id, 0xC000);
+            var register = _registers.Values.SingleOrDefault(r => r.Name == "PC");
+            if (register is null)
+            {
+	            AnsiConsole.MarkupLine("[red]Registers available (ra) should be run before starting app[/]");
+	            return;
+            }
+            var registerItem = new RegisterItem(register.Id, 0x0801);
             var argument = ImmutableArray<RegisterItem>.Empty.Add(registerItem);
             var command = _bridge.EnqueueCommand(new RegistersSetCommand(MemSpace.MainMemory, argument));
             await AwaitWithTimeoutAsync(command.Response, cr => OutputRegisters(cr.Response!.Items));
@@ -456,7 +476,7 @@ namespace ModernVICEPDBMonitor.Playground
         }
         async Task LoadSampleAsync(CancellationToken ct)
         {
-            var file = Path.Combine(Path.GetDirectoryName(typeof(Application).Assembly.Location)!, "Samples", "tiny.o");
+            var file = Path.Combine(Path.GetDirectoryName(typeof(Application).Assembly.Location)!, "Samples", "main.prg");
             var command = _bridge.EnqueueCommand(new AutoStartCommand(runAfterLoading: false, 0, file));
             var response = await command.Response;
         }
