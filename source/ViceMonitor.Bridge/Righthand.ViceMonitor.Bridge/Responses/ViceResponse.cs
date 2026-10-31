@@ -57,20 +57,6 @@ public record CheckpointInfoResponse(byte ApiVersion, ErrorCode ErrorCode, uint 
 public record CheckpointListResponse(byte ApiVersion, ErrorCode ErrorCode, uint TotalNumberOfCheckpoints, ImmutableArray<CheckpointInfoResponse> Info) : ViceResponse(ApiVersion, ErrorCode);
 
 /// <summary>
-/// Response to <see cref="Righthand.ViceMonitor.Bridge.Commands.RegistersGetCommand"/> and 
-/// <see cref="Righthand.ViceMonitor.Bridge.Commands.RegistersSetCommand"/>.
-/// </summary>
-/// <param name="ApiVersion"><inheritdoc /></param>
-/// <param name="ErrorCode"><inheritdoc /></param>
-/// <param name="Items">
-/// An array with items of structure:
-///   byte 0: Size of the item, excluding this byte
-///   byte 1: ID of the register
-///   byte 2-3: register value
-/// </param>
-public record RegistersResponse(byte ApiVersion, ErrorCode ErrorCode, ImmutableArray<RegisterItem> Items) 
-	: ViceResponse(ApiVersion, ErrorCode);
-/// <summary>
 /// Response to <see cref="Righthand.ViceMonitor.Bridge.Commands.UndumpCommand"/>.
 /// </summary>
 /// <param name="ApiVersion"><inheritdoc /></param>
@@ -173,38 +159,3 @@ public record InfoResponse(byte ApiVersion, ErrorCode ErrorCode, byte Major, byt
 /// <param name="ApiVersion"><inheritdoc /></param>
 /// <param name="ErrorCode"><inheritdoc /></param>
 public record EmptyViceResponse(byte ApiVersion, ErrorCode ErrorCode) : ViceResponse(ApiVersion, ErrorCode);
-
-/// <summary>
-/// Response MON_RESPONSE_CPUHISTORY_GET to <see cref="CpuHistoryCommand"/> as buffer.
-/// </summary>
-/// <param name="ApiVersion"></param>
-/// <param name="ErrorCode"></param>
-/// <param name="Buffer"></param>
-/// <remarks>
-/// Object has to be disposed once it is processed to free memory occupied by <see cref="Buffer"/>.
-/// </remarks>
-public record CpuHistoryBufferResponse(byte ApiVersion, ErrorCode ErrorCode, ManagedBuffer? Buffer)
-	: ViceResponse(ApiVersion, ErrorCode)
-{
-	/// <summary>
-	/// Parses buffer and returns an array of <see cref="CpuHistoryItem"/>. 
-	/// </summary>
-	/// <returns></returns>
-	public  ImmutableArray<CpuHistoryItem> ParseContent(ResponseBuilder builder)
-	{
-		if (Buffer is null)
-		{
-			return [];
-		}
-		
-		ReadOnlySpan<byte> buffer = Buffer.Value.Data.AsSpan();
-		return builder.BuildCpuHistoryResponse(buffer);
-	}
-	/// <summary>
-	/// Releases all resources used by the <see cref="DisplayGetResponse"/>.
-	/// </summary>
-	public void Dispose()
-	{
-		Buffer?.Dispose();
-	}
-}

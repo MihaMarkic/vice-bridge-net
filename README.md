@@ -53,6 +53,10 @@ else
 
 ## History
 
+1.1.2 (TBD)
+
+- reorganizes responses, specially with [CPU History command](https://github.com/MihaMarkic/vice-bridge-net/issues/28) in mind
+
 1.1.1 (1.10.2026)
 - returns a buffer by default (without parsing) for [CPU History command](https://github.com/MihaMarkic/vice-bridge-net/issues/28), because it might be simply saved to disk for later parsing. Parsing is on demand through its ParseContent function. Also, CpuHistoryBufferResponse should be disposed. 
 

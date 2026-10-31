@@ -111,8 +111,8 @@ public class ResponseBuilder
 		}
 		else
 		{
-			return new CheckpointInfoResponse(apiVersion, errorCode, default, default, default, default,
-				default, default, default, default, default, default, default);
+			return new CheckpointInfoResponse(apiVersion, errorCode, 0, false, 0, 0,
+				false, false, default, false, 0, 0, false);
 		}
 	}
 	internal CheckpointListResponse BuildCheckpointListResponse(byte apiVersion, ErrorCode errorCode, ReadOnlySpan<byte> buffer)
@@ -133,29 +133,10 @@ public class ResponseBuilder
 		
 		if (errorCode == ErrorCode.OK)
 		{
-			var registerItems = BuildRegisterItems(ref buffer);
+			var registerItems = RegistersResponse.BuildRegisterItems(ref buffer);
 			return new RegistersResponse(apiVersion, errorCode, registerItems);
 		}
 		return new RegistersResponse(apiVersion, errorCode, []);
-	}
-
-	internal static ImmutableArray<RegisterItem> BuildRegisterItems(ref ReadOnlySpan<byte> buffer)
-	{
-		ushort itemsCount = ReadUInt16(ref buffer);
-		var items = new RegisterItem[itemsCount];
-		for (ushort i = 0; i < itemsCount; i++)
-		{
-			var length = ReadByte(ref buffer);
-			Debug.Assert(length == 3);
-			var item = new RegisterItem(
-				//Size: itemBuffer[0], should be 3
-				RegisterId: ReadByte(ref buffer),
-				RegisterValue: ReadUInt16(ref buffer)
-			);
-			items[i] = item;
-		}
-
-		return [..items];
 	}
 	
 	internal UndumpResponse BuildUndumpResponse(byte apiVersion, ErrorCode errorCode, ReadOnlySpan<byte> buffer)
@@ -166,7 +147,7 @@ public class ResponseBuilder
 		}
 		else
 		{
-			return new UndumpResponse(apiVersion, errorCode, ProgramCounterPosition: default);
+			return new UndumpResponse(apiVersion, errorCode, ProgramCounterPosition: 0);
 		}
 	}
 	internal ResourceGetResponse BuildResourceGetResponse(byte apiVersion, ErrorCode errorCode, ReadOnlySpan<byte> buffer)
@@ -186,19 +167,19 @@ public class ResponseBuilder
 		}
 		else
 		{
-			return new ResourceGetResponse(apiVersion, errorCode, Resource: default);
+			return new ResourceGetResponse(apiVersion, errorCode, Resource: null);
 		}
 	}
 	internal JamResponse BuildJamResponse(byte apiVersion, ErrorCode errorCode, ReadOnlySpan<byte> buffer)
 	{
-		_logger.LogDebug($"{errorCode}");
+		_logger.LogDebug("{ErrorCode}", errorCode);
 		if (errorCode == ErrorCode.OK)
 		{
 			return new JamResponse(apiVersion, errorCode, ProgramCounterPosition: BitConverter.ToUInt16(buffer));
 		}
 		else
 		{
-			return new JamResponse(apiVersion, errorCode, ProgramCounterPosition: default);
+			return new JamResponse(apiVersion, errorCode, ProgramCounterPosition: 0);
 		}
 	}
 	internal StoppedResponse BuildStoppedResponse(byte apiVersion, ErrorCode errorCode, ReadOnlySpan<byte> buffer)
@@ -209,7 +190,7 @@ public class ResponseBuilder
 		}
 		else
 		{
-			return new StoppedResponse(apiVersion, errorCode, ProgramCounterPosition: default);
+			return new StoppedResponse(apiVersion, errorCode, ProgramCounterPosition: 0);
 		}
 	}
 	internal ResumedResponse BuildResumedResponse(byte apiVersion, ErrorCode errorCode, ReadOnlySpan<byte> buffer)
@@ -220,7 +201,7 @@ public class ResponseBuilder
 		}
 		else
 		{
-			return new ResumedResponse(apiVersion, errorCode, ProgramCounterPosition: default);
+			return new ResumedResponse(apiVersion, errorCode, ProgramCounterPosition: 0);
 		}
 	}
 	internal BanksAvailableResponse BuildBanksAvailableResponse(byte apiVersion, ErrorCode errorCode, ReadOnlySpan<byte> buffer)
@@ -290,10 +271,12 @@ public class ResponseBuilder
 		}
 		else
 		{
-			return new DisplayGetResponse(apiVersion, errorCode, default, default, default, default, default, default,
-				default, ManagedBuffer.Empty);
+			return new DisplayGetResponse(apiVersion, errorCode, 0, 0, 0,
+				0, 0, 0,
+				0, ManagedBuffer.Empty);
 		}
 	}
+
 	internal InfoResponse BuildInfoResponse(byte apiVersion, ErrorCode errorCode, ReadOnlySpan<byte> buffer)
 	{
 		if (errorCode == ErrorCode.OK)
@@ -310,24 +293,7 @@ public class ResponseBuilder
 				}
 			}
 		}
-		return new InfoResponse(apiVersion, errorCode, default, default, default, default, default);
-	}
-
-	/// <summary>
-	/// Provides parsing for CPU history response.
-	/// </summary>
-	/// <param name="buffer"></param>
-	/// <returns></returns>
-	internal ImmutableArray<CpuHistoryItem> BuildCpuHistoryResponse(ReadOnlySpan<byte> buffer)
-	{
-			uint itemCount = ReadUInt32(ref buffer);
-			var items = new CpuHistoryItem[itemCount];
-			for (uint i = 0; i < itemCount; i++)
-			{
-				items[i] = BuildCpuHistoryItem(ref buffer);								
-			}
-
-			return [.. items];
+		return new InfoResponse(apiVersion, errorCode, 0, 0, 0, 0, 0);
 	}
 	
 	internal CpuHistoryBufferResponse BuildCpuHistoryBufferResponse(byte apiVersion, ErrorCode errorCode, ReadOnlySpan<byte> buffer)
@@ -341,51 +307,7 @@ public class ResponseBuilder
 
 		return new CpuHistoryBufferResponse(apiVersion, errorCode, null);
 	}
-
-	internal CpuHistoryItem BuildCpuHistoryItem(ref ReadOnlySpan<byte> buffer)
-	{
-		var itemSize = ReadByte(ref buffer);
-		if (buffer.Length < itemSize)
-		{
-			throw new Exception("Buffer is too small");
-		}
-		var registerItems = BuildRegisterItems(ref buffer);
-		var cpuClock = ReadUInt64(ref buffer);
-		var instructionDataLength = ReadByte(ref buffer);
-		ReadOnlySpan<byte> instructionData = ReadBytes(ref buffer, instructionDataLength);
-		return new CpuHistoryItem([..registerItems], cpuClock, [..instructionData]);
-	}
+	
 	internal EmptyViceResponse BuildEmptyResponse(byte apiVersion, ErrorCode errorCode) => new(apiVersion, errorCode);
 	internal AutoStartResponse BuildAutoStartResponse(byte apiVersion, ErrorCode errorCode) => new(apiVersion, errorCode);
-
-	internal static UInt64 ReadUInt64(ref ReadOnlySpan<byte> buffer)
-	{
-		UInt64 result = BitConverter.ToUInt64(buffer);
-		buffer = buffer[sizeof(UInt64)..];
-		return result;
-	}
-	internal static UInt32 ReadUInt32(ref ReadOnlySpan<byte> buffer)
-	{
-		UInt32 result = BitConverter.ToUInt32(buffer);
-		buffer = buffer[sizeof(UInt32)..];
-		return result;
-	}
-	internal static UInt16 ReadUInt16(ref ReadOnlySpan<byte> buffer)
-	{
-		UInt16 result = BitConverter.ToUInt16(buffer);
-		buffer = buffer[sizeof(UInt16)..];
-		return result;
-	}
-	internal static byte ReadByte(ref ReadOnlySpan<byte> buffer)
-	{
-		byte result = buffer[0];
-		buffer = buffer[sizeof(byte)..];
-		return result;
-	}
-	internal static ReadOnlySpan<byte> ReadBytes(ref ReadOnlySpan<byte> buffer, int length)
-	{
-		var result = buffer[0..length];
-		buffer = buffer[length..];
-		return result;
-	}
 }
